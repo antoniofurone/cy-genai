@@ -1,0 +1,72 @@
+#create you semantic db on postgreSQL
+psql -h localhost -p 5432 -U postgres
+
+CREATE USER cygenai WITH PASSWORD '<your_pwd>';
+CREATE DATABASE cygenaidb;
+GRANT ALL ON DATABASE cygenaidb TO cygenai;
+ALTER DATABASE cygenaidb OWNER TO cygenai;
+
+#create vector EXTENSION
+psql -h localhost -p 5432 -U postgres -d cygenaidb
+CREATE EXTENSION IF NOT EXISTS vector;
+
+
+#create tables
+psql -h localhost -p 5432 -U cygenai -d cygenaidb
+
+# cy_embs_types
+
+CREATE TABLE IF NOT EXISTS cy_embs_types(
+    id smallint PRIMARY KEY,
+    name varchar(30) not null
+);
+
+insert into cy_embs_types(id,name) values (1,'Google Vertex AI');
+insert into cy_embs_types(id,name) values (2,'Open AI');
+insert into cy_embs_types(id,name) values (3,'Hugging Face');
+
+
+# cy_context_types
+
+CREATE TABLE IF NOT EXISTS cy_context_types(
+    id smallint PRIMARY KEY,
+    name varchar(30) not null
+);
+
+insert into cy_context_types(id,name) values (1,'Chat Bot');
+insert into cy_context_types(id,name) values (2,'Ask Data');
+insert into cy_context_types(id,name) values (3,'GenAI Tasks');
+
+# cy_llm_types
+
+CREATE TABLE IF NOT EXISTS cy_llm_types(
+    id smallint PRIMARY KEY,
+    name varchar(30) not null
+);
+
+insert into cy_llm_types(id,name) values (1,'Chat Open AI');
+insert into cy_llm_types(id,name) values (2,'Open AI');
+insert into cy_llm_types(id,name) values (3,'Google Vertex AI');
+insert into cy_llm_types(id,name) values (4,'Hugging Face');
+
+# cy_load_types
+
+CREATE TABLE IF NOT EXISTS cy_load_types(
+    id smallint PRIMARY KEY,
+    name varchar(30) not null
+);
+
+insert into cy_load_types(id,name) values (1,'Pdf');
+insert into cy_load_types(id,name) values (2,'File Directory');
+insert into cy_load_types(id,name) values (3,'Csv');
+insert into cy_load_types(id,name) values (4,'Html');
+
+# cy_source_types
+
+CREATE TABLE IF NOT EXISTS cy_source_types(
+    id smallint PRIMARY KEY,
+    name varchar(30) not null
+);
+
+insert into cy_source_types(id,name) values (1,'Oracle');
+insert into cy_source_types(id,name) values (2,'PostgreSQL');

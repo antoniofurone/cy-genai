@@ -1,0 +1,34 @@
+sparklelang libs >
+
+pip install --upgrade langchain
+pip install --upgrade langchain-openai
+pip install --upgrade langchain-google-vertexai
+pip install --upgrade pypdf
+pip install --upgrade unstructured
+
+# https://github.com/langchain-ai/langchain/commit/7ae3ce60d2f572e4781c9eb87033eb2c5950b628
+# bug on 0.0.20 version; use 0.0.19 and 0.1.1 langchain version
+pip install -U langchain-community
+
+#pg adapter
+pip install --upgrade psycopg2
+#oracle
+pip install cx-Oracle
+
+#fast api
+pip install fastapi
+pip install uvicorn
+pip install python-multipart
+
+#hugging face
+https://python.langchain.com/docs/integrations/platforms/huggingface
+pip install --upgrade  huggingface_hub
+
+#for local pipeline
+pip install --upgrade transformers
+pip install torch
+
+#embeddings
+#bug: doesn't work with python 3.12 (ok >=3.9 <=3.11)
+pip install sentence-transformers
+

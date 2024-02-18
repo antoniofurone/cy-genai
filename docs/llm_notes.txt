@@ -1,0 +1,9 @@
+modelli di text_gen poco utilizzabili per il QA:
+    google/flan-t5-base
+    google/flan-t5-xxl
+    gpt2
+modelli di QA testati:
+    Intel/dynamic_tinybert {"max_length": 512} -> poor
+    deepset/roberta-base-squad2 -> buono; 
+modelli di classificazione testati:
+    SamLowe/roberta-base-go_emotions    

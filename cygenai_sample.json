@@ -1,0 +1,56 @@
+{
+    
+    "version":"CyGenAI version 0.0.1",
+    "logging": 
+        {
+            "fileName":"C:/Users/User/VSProjects/cy-genai/logs/cygenai.log",
+            "level":"INFO"
+        },
+    "semantic_db":
+        {
+            "database":"cygenaidb",
+            "user":"cygenai", 
+            "host":"localhost",
+            "password":"<you_pwd>",
+            "port":5432
+        },
+    "embeddings":
+        {
+            "requestsPerMinute":10,
+            "callperBatch":2,
+            "tableFieldSize":1600,
+            "hugging_face_embs":{
+                "model_name":"sentence-transformers/all-MiniLM-L6-v2",
+                "model_kwargs":{"device":"cpu"},
+                "encode_kwargs":{"normalize_embeddings": "False"}
+            }
+        },   
+    "load":
+        {
+            "root_folder":"C:/Users/User/VSProjects/cy-genai/loads"
+        },   
+    "api_server":
+        {
+            "host":"localhost",
+            "port":8000
+        },        
+    "web_server":
+        {
+            "root_folder":"C:/Users/User/VSProjects/cy-genai/gui/html",
+            "mount":"/cygenai",
+            "host":"localhost",
+            "port":8003
+        },  
+    "secret":
+        {
+            "encryption_key": "<your_encryption_key>"
+        },    
+    "chatbot":
+        {
+            
+        },
+    "askdata":
+        {
+            "query_max_attempts":2
+        }            
+}
