@@ -13,7 +13,7 @@ from tabulate import tabulate
 
 from cygenai_env import CyLangEnv
 from cygenai_semantic import CySemanticDB
-from cygenai_semantic_data import CyLangContext,CyLangLLMData,CyLangContextType,CyLangSourceType,CyLangSource
+from cygenai_semantic_data import CyLangContext,CyLangLLMData,CyLangContextType,CyLangSourceType,CyLangSource,CyLangHistory
 from cygenai_llm import CyLangLLM,CyLangLLMType
 from embeddings import CyEmbeddingsModel
 from document_loaders import CyDocumentLoaderType
@@ -59,7 +59,7 @@ app.add_middleware(
 )
 
 @app.exception_handler(Exception)
-async def validation_exception_handler(request: Request, exc: Exception):
+def validation_exception_handler(request: Request, exc: Exception):
     # Change here to Logger
     return JSONResponse(
         status_code=500,
@@ -79,13 +79,13 @@ def read_root():
     return env.get_config().get_version()
 
 @app.get("/contexts")
-async def get_contexts():
+def get_contexts():
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
     return semanticDB.get_context_all()
 
 @app.get("/contexts/{name}")
-async def get_context(name:str):
+def get_context(name:str):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
     ctx=semanticDB.get_context(name)
@@ -94,13 +94,13 @@ async def get_context(name:str):
     return semanticDB.get_context(name)
 
 @app.get("/embeddings-types")
-async def get_embedding_types():
+def get_embedding_types():
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
     return semanticDB.get_embs_types()
 
 @app.get("/context-types")
-async def get_context_types():
+def get_context_types():
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
     return semanticDB.get_context_types()
@@ -117,20 +117,21 @@ class Context (BaseModel):
     load_threshold:float=0.65
     chunk_weight:float=0.85
     load_weight:float=0.15
+    history:bool=False
 
 
 @app.post("/context/",status_code=status.HTTP_201_CREATED)
-async def create_context(context: Context):
+def create_context(context: Context):
     ctx=CyLangContext(context.name,context.chunk_size,context.chunk_overlap,context.embeddings_model.value,context.context_type.value,
                        context_size=context.context_size,chunk_threshold=context.chunk_threshold,load_threshold=context.load_threshold,
-                       chunk_weight=context.chunk_weight,load_weight=context.load_weight)
+                       chunk_weight=context.chunk_weight,load_weight=context.load_weight,history=context.history)
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
     semanticDB.create_context(ctx)    
     return context
 
 @app.delete("/context/{context_id}",status_code=status.HTTP_204_NO_CONTENT)
-async def delete_context(context_id: int):
+def delete_context(context_id: int):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
     
@@ -142,14 +143,14 @@ async def delete_context(context_id: int):
     return context_id
 
 @app.get("/source-types")
-async def get_source_types():
+def get_source_types():
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
     return semanticDB.get_source_types()
 
 
 @app.get("/sources/{context_id}")
-async def get_sources(context_id:int):
+def get_sources(context_id:int):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
     return semanticDB.get_source_all(context_id)
@@ -167,7 +168,7 @@ class Source(BaseModel):
     password:str
 
 @app.post("/sources/",status_code=status.HTTP_201_CREATED)
-async def add_source(source: Source):
+def add_source(source: Source):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
     if semanticDB.get_context_by_id(source.context_id) is None:
@@ -185,7 +186,7 @@ async def add_source(source: Source):
     return source
 
 @app.get("/sources/{context_id}/{name}")
-async def get_source(context_id:int,name:str):
+def get_source(context_id:int,name:str):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
     ctx=semanticDB.get_context_by_id(context_id=context_id)
@@ -197,7 +198,7 @@ async def get_source(context_id:int,name:str):
     return source
 
 @app.delete("/sources/{context_id}/{name}",status_code=status.HTTP_204_NO_CONTENT)
-async def remove_source(context_id:int,name:str):
+def remove_source(context_id:int,name:str):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
     
@@ -212,14 +213,14 @@ async def remove_source(context_id:int,name:str):
 
 
 @app.get("/llms/{context_id}")
-async def get_llms(context_id:int):
+def get_llms(context_id:int):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
     return semanticDB.get_llm_all(context_id)
 
 
 @app.get("/llm-types")
-async def get_llm_types():
+def get_llm_types():
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
     return semanticDB.get_llm_types()
@@ -239,7 +240,7 @@ class LLM(BaseModel):
     pt_pipeline:bool=False
 
 @app.post("/llms/",status_code=status.HTTP_201_CREATED)
-async def add_llm(llm: LLM):
+def add_llm(llm: LLM):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
     if semanticDB.get_context_by_id(llm.context_id) is None:
@@ -252,7 +253,7 @@ async def add_llm(llm: LLM):
     return llm
 
 @app.get("/llms/{context_id}/{name}")
-async def get_llm(context_id:int,name:str):
+def get_llm(context_id:int,name:str):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
     ctx=semanticDB.get_context_by_id(context_id=context_id)
@@ -264,7 +265,7 @@ async def get_llm(context_id:int,name:str):
     return llm
 
 @app.delete("/llms/{context_id}/{name}",status_code=status.HTTP_204_NO_CONTENT)
-async def remove_llm(context_id:int,name:str):
+def remove_llm(context_id:int,name:str):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
     
@@ -277,22 +278,53 @@ async def remove_llm(context_id:int,name:str):
     semanticDB.remove_llm(context_id,name)
     return str(context_id)+";"+name
 
+@app.get("/sessions")
+def get_session():
+    env=g_data['env'] 
+    import uuid 
+    
+    semanticDB=CySemanticDB(env)
+    semanticDB.clean_history() 
+      
+    id = uuid.uuid4() 
+    return id
+
+
 class Query(BaseModel):
     query:str
     context_id:int
+    session_id:str=Field(default=None, title="Session-id used for history")
     llm_name:str =Field(default=None, title="Name of LLM")
     source_name:str =Field(default=None, title="Name of Source")
     askdata_output_fmt:str =Field(default=None, title="Formato in output per askdata")
 
 
 @app.post("/llm-query/",status_code=status.HTTP_200_OK)
-async def llm_query(query: Query):
+def llm_query(query: Query):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
-    
+
     ctx=semanticDB.get_context_by_id(query.context_id)
     if ctx is None:
-        raise HTTPException(status_code=404, detail="Context not found")     
+        raise HTTPException(status_code=404, detail="Context not found") 
+
+    if ctx.history and query.session_id is None:
+        raise HTTPException(status_code=404, detail="You should set session_id for context with history") 
+    
+    #load history
+    history_size=env.get_config().get_history_config()['size']
+    history=[]
+    
+    if ctx.history:
+        history=semanticDB.get_history(context_id=ctx.id,session_id=query.session_id,size=history_size)
+    query_search=query.query    
+    
+    if history is not None:
+        for his in history:
+            query_search=query_search+' '+his.query
+        history.reverse()    
+    logging.info("query_search="+query_search)
+    
     
     if query.llm_name is None:
         query.llm_name="default"
@@ -315,21 +347,26 @@ async def llm_query(query: Query):
     logging.debug("llm_local="+str(llm.local))
     logging.debug("llm_ppt_pipeline="+str(llm.pt_pipeline))
 
+
     if llm.llm_type==CyLangLLMType.HUGGING_FACE and \
         (llm.task=='text-classification' or llm.task=='sentiment-analysis' or llm.task=='text-generation' or llm.task=='text2text-generation'):
         chunks=[]
     else:
-        chunks=semanticDB.similarity_search(ctx,query.query)
+        chunks=semanticDB.similarity_search(ctx,query_search)
    
-    res = llm.invoke(chunks,query.query)
+    res = llm.invoke(contexts=chunks,query=query.query,hasHistory=ctx.history,history=history)
     if res is None:
-        res=''
+        res="I don't know"
     else:
         if llm.pt_pipeline is True:
             res=json.dumps(res)
         else:
             res=res['text']     
     
+    if ctx.history:
+        semanticDB.add_history(CyLangHistory(context_id=ctx.id,session_id=query.session_id,
+                                              query=query.query,answer=res))
+
     if ctx.context_type_id == CyLangContextType.ASK_DATA.value:
         
         if query.source_name is None:
@@ -345,11 +382,15 @@ async def llm_query(query: Query):
         if source.source_type_id==CyLangSourceType.ORACLE.value:
             db_config={"user": source.user_id,"password": source.password, "host": source.host, 
                        "port": source.port,  "service_name": source.service_name}
-            db_conn=db_connector=CyLangDBFactory().getDB(adapter=CyDBAdapterEnum.CXORACLE,config=db_config)  
+            db_conn=CyLangDBFactory().getDB(adapter=CyDBAdapterEnum.CXORACLE,config=db_config)  
         elif source.source_type_id==CyLangSourceType.POSTGRESQL.value:
             db_config={"user": source.user_id,"password": source.password, "host": source.host, 
                        "port": source.port,  "database": source.data_base}
-            db_conn=db_connector=CyLangDBFactory().getDB(adapter=CyDBAdapterEnum.PSYCOPG2,config=db_config)    
+            db_conn=CyLangDBFactory().getDB(adapter=CyDBAdapterEnum.PSYCOPG2,config=db_config)  
+        elif source.source_type_id==CyLangSourceType.ORACLETHIN.value:
+            db_config={"user": source.user_id,"password": source.password, "host": source.host, 
+                       "port": source.port,  "service_name": source.service_name}
+            db_conn=CyLangDBFactory().getDB(adapter=CyDBAdapterEnum.ORACLETHIN,config=db_config)      
         else:
             raise HTTPException(status_code=404, detail="SourceType not supported")     
        
@@ -379,7 +420,12 @@ async def llm_query(query: Query):
                 addition = "Please, consider you already answered the question with the following query: " +    res + " and the database raised the following error when it was executed: " + f"{e}"
                 attempts += 1
                 if attempts < max_attempts:
-                    res = llm.invoke(chunks, query.query, addition)['text']
+                    res = llm.invoke(contexts=chunks, query=query.query, addition=addition,hasHistory=ctx.history,history=history)['text']
+
+                if ctx.history:
+                    semanticDB.add_history(CyLangHistory(context_id=ctx.id,session_id=query.session_id,
+                                              query=query.query,answer=res))   
+
                 else:
                     logging.info("Maximum number of attempts exceeded. Breaking the loop.")
         
@@ -407,7 +453,7 @@ class LoadFolder(BaseModel):
 
 
 @app.post("/load-folders/",status_code=status.HTTP_201_CREATED)
-async def create_folder(folder: LoadFolder):
+def create_folder(folder: LoadFolder):
     env=g_data['env'] 
     
     semanticDB=CySemanticDB(env)
@@ -433,7 +479,7 @@ async def create_folder(folder: LoadFolder):
     return folder_path
 
 @app.get("/load-folders/{context_id}")
-async def get_folder_list(context_id:int,folder:str=None):
+def get_folder_list(context_id:int,folder:str=None):
     env=g_data['env'] 
     
     semanticDB=CySemanticDB(env)
@@ -457,7 +503,7 @@ async def get_folder_list(context_id:int,folder:str=None):
     return os.listdir(folder_path)
 
 @app.delete("/load-folders/{context_id}",status_code=status.HTTP_204_NO_CONTENT)
-async def remove_folder(context_id:int,folder:str=None):
+def remove_folder(context_id:int,folder:str=None):
     env=g_data['env'] 
     
     semanticDB=CySemanticDB(env)
@@ -485,7 +531,7 @@ async def remove_folder(context_id:int,folder:str=None):
 import shutil
 
 @app.post("/load-files/{context_id}",status_code=status.HTTP_201_CREATED)
-async def upload_file(file:UploadFile,context_id:int,folderPath:str=None):
+def upload_file(file:UploadFile,context_id:int,folderPath:str=None):
     env=g_data['env'] 
     
     semanticDB=CySemanticDB(env)
@@ -525,7 +571,7 @@ class LoadFile(BaseModel):
 
 
 @app.get("/load-files/{context_id}")
-async def get_file(context_id:int,file_path:str):
+def get_file(context_id:int,file_path:str):
     env=g_data['env'] 
     
     semanticDB=CySemanticDB(env)
@@ -555,7 +601,7 @@ async def get_file(context_id:int,file_path:str):
 
 
 @app.delete("/load-files/",status_code=status.HTTP_204_NO_CONTENT)
-async def remove_file(load_file:LoadFile):
+def remove_file(load_file:LoadFile):
     env=g_data['env'] 
     
     semanticDB=CySemanticDB(env)
@@ -588,7 +634,7 @@ class CyDocumentLoaderType(Enum):
     HTML=4
 
 @app.get("/load-types")
-async def get_load_types():
+def get_load_types():
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
     return semanticDB.get_load_types()
@@ -602,7 +648,7 @@ class Load(BaseModel):
 
 
 @app.post("/loads/",status_code=status.HTTP_201_CREATED)
-async def add_load(load: Load):
+def add_load(load: Load):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
 
@@ -618,13 +664,13 @@ async def add_load(load: Load):
     return load
 
 @app.get("/context-loads/{contex_id}")
-async def get_loads_by_context(context_id:int):
+def get_loads_by_context(context_id:int):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
     return semanticDB.get_load_all(context_id)
 
 @app.get("/loads/{load_id}")
-async def get_load(load_id:int):
+def get_load(load_id:int):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
     load=semanticDB.get_load_by_id(load_id)
@@ -633,7 +679,7 @@ async def get_load(load_id:int):
     return semanticDB.get_load_by_id(load_id)
 
 @app.delete("/loads/{load_id}",status_code=status.HTTP_204_NO_CONTENT)
-async def remove_load(load_id:int):
+def remove_load(load_id:int):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
     load=semanticDB.get_load_by_id(load_id)

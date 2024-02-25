@@ -6,8 +6,8 @@ import logging,logging.handlers
 from cygenai_env import CyLangEnv
 from text_splitter import CyTextSplitter
 from embeddings import CyEmbeddings,CyEmbeddingsBatch,CyEmbeddingsModel
-from cygenai_semantic_data import CyLangContext,CyLangLoad,CyLangChunk,CyLangChunks,CyLangLLMData,CyLangSource
-from cygenai_semantic_dao import CyLangContextDao,CyLangLLMDao,CyLangLoadDao,CyLangChunkDao,CyLangSourceDao
+from cygenai_semantic_data import CyLangContext,CyLangLoad,CyLangChunk,CyLangChunks,CyLangLLMData,CyLangSource,CyLangHistory
+from cygenai_semantic_dao import CyLangContextDao,CyLangLLMDao,CyLangLoadDao,CyLangChunkDao,CyLangSourceDao,CyLangHistoryDao
 from cygenai_utils import ThreadAdapter
 from document_loaders import CyDocumentLoader,CyDocumentLoaderType
 
@@ -54,6 +54,16 @@ class CySemanticDB:
     
     def get_source_types(self)->list:
         return CyLangSourceDao(self.__env).get_types()
+    
+    def add_history(self,history:CyLangHistory):
+        CyLangHistoryDao(self.__env).insert(history)
+
+    def get_history(self, context_id:int,session_id:str,size:int)->list[CyLangHistory]:
+        return CyLangHistoryDao(self.__env).get_history(context_id=context_id,session_id=session_id,size=size)  
+    
+    def clean_history(self):
+        thr = ThreadAdapter(target=exec_clean_history, args=(self.__env,))
+        thr.start()
  
     def add_llm(self,llm:CyLangLLMData):
         CyLangLLMDao(self.__env).insert(llm)
@@ -177,7 +187,8 @@ class CySemanticDB:
         return res
 
 
-
+def exec_clean_history(env):
+    CyLangHistoryDao(env).clean_history()
 
 def exec_chunk_similarity(env,sql):
     ret=[]

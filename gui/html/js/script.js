@@ -1,8 +1,9 @@
 $(document).ready(() => {
 
 	// set visitor name
-	let $userName = "Tom";
+	let $userName = "";
 	let $urlBase="http://localhost:8000"
+	let $session_id="";
 
 	// start chatbox
 	$("#form-start").on("submit", (event) => {
@@ -30,11 +31,31 @@ $(document).ready(() => {
 					console.log(item.id)
 					$('#sel_contexts').append($('<option>', { 
 						value: item.id,
-						text : item.name +" [embs="+item.embeddings_model_name+";type="+item.context_type_name+"]"
+						text : item.name +" [embs="+item.embeddings_model_name+";type="+item.context_type_name
+						+";history="+item.history
+						+"]"
 					}));
 				  });
 
 				$('#sel_llms').empty()
+
+				// get session_id
+				$.ajax({
+					url: $urlBase+'/sessions',
+					headers: {
+						//'Content-Type': 'application/x-www-form-urlencoded'
+					},
+					type: "GET", 
+					dataType: "json",
+					data: {
+					},
+					success: function (result) {
+						$session_id=result
+					},
+					error: function () {
+						postBotReply("Sorry, there are some problems. Try later.")
+					}
+				});
 
 				// get llm
 				$.ajax({
@@ -82,6 +103,24 @@ $(document).ready(() => {
 	// context selection
 	$("#sel_contexts").change(function(){
 		$('#sel_llms').empty()
+
+		// get session_id
+		$.ajax({
+			url: $urlBase+'/sessions',
+			headers: {
+				//'Content-Type': 'application/x-www-form-urlencoded'
+			},
+			type: "GET", 
+			dataType: "json",
+			data: {
+			},
+			success: function (result) {
+				$session_id=result
+			},
+			error: function () {
+				postBotReply("Sorry, there are some problems. Try later.")
+			}
+		});
 
 		$.ajax({
 			url: $urlBase+'/llms/'+$('#sel_contexts').val(),
@@ -150,7 +189,8 @@ $(document).ready(() => {
 			headers: {
 				//'Content-Type': 'application/x-www-form-urlencoded'
 			},
-			data: JSON.stringify({ "query": userMessage,"context_id":$('#sel_contexts').val(),llm_name:$('#sel_llms').val(),askdata_output_fmt:'html' }),
+			data: JSON.stringify({ "query": userMessage,"context_id":$('#sel_contexts').val(),llm_name:$('#sel_llms').val(),
+				askdata_output_fmt:'html',session_id: $session_id}),
 			dataType: 'json',
 			success: function(reply){
 				if (typeof reply === "string") postBotReply(reply);

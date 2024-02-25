@@ -11,6 +11,7 @@ class CyLangContextType(Enum):
 class CyLangSourceType(Enum):
     ORACLE=1
     POSTGRESQL=2
+    ORACLETHIN=3
 
 class CyLangChunk():
     def __init__(self,content:str,metadata:dict,
@@ -76,7 +77,29 @@ class CyLangLoad(CyLangData):
 
     def __str__(self):
         return "["+str(self.id)+";"+str(self.similarity)+"]"
-     
+
+class CyLangHistory(CyLangData):
+    def __init__(self,context_id:str,session_id:str,
+                 query:str,answer:str):
+        self.context_id=context_id
+        self.session_id=session_id
+        self.query=query
+        self.answer=answer
+      
+    def get_table(self)->str:
+        return "cy_history"    
+    
+    def get_schema(self)->str:
+        return "public"   
+
+    def get_cols(self)->list:
+        return ['context_id','session_id','query','answer']
+
+    def get_values(self)->list:
+        return [(self.context_id,self.session_id,self.query,self.answer)]
+    
+
+
 class CyLangSource(CyLangData):
     def __init__(self,context_id:str,name:str,source_type_id:int,
                 host:str,port:int,
@@ -146,7 +169,7 @@ class CyLangContext(CyLangData):
     def __init__(self,name:str,chunk_size:int, chunk_overlap:int,
                 embeddings_model_id:int,context_type_id:int,id:int=0,context_size:int=5,
                 chunk_threshold:float=0.75,load_threshold:float=0.75,
-                chunk_weight:float=0.8,load_weight:float=0.2,
+                chunk_weight:float=0.8,load_weight:float=0.2,history:bool=False,session_id:str=None,
                 embeddings_model_name:str=None,context_type_name:str=None
                 ):
         self.id=id
@@ -160,6 +183,7 @@ class CyLangContext(CyLangData):
         self.load_threshold=load_threshold
         self.chunk_weight=chunk_weight
         self.load_weight=load_weight
+        self.history=history
         self.embeddings_model_name=embeddings_model_name
         self.context_type_name=context_type_name
         
@@ -172,14 +196,14 @@ class CyLangContext(CyLangData):
 
     def get_cols(self)->list:
         return ['context_name','chunk_size','chunk_overlap','embedding_model','context_type','context_size',
-                'chunk_threshold','load_threshold','chunk_weight','load_weight']
+                'chunk_threshold','load_threshold','chunk_weight','load_weight','history']
     
     def get_values(self)->list:
         return [(self.name,self.chunk_size,self.chunk_overlap,self.embeddings_model_id,self.context_type_id,self.context_size,
-                 self.chunk_threshold,self.load_threshold,self.chunk_weight,self.load_weight)]
+                 self.chunk_threshold,self.load_threshold,self.chunk_weight,self.load_weight,self.history)]
        
     def __str__(self):
         return "["+str(self.id)+";"+self.name+";"+str(self.chunk_size)+";"+str(self.chunk_overlap)+";"+str(self.embeddings_model_id)+";"+\
             str(self.context_type_id)+";"+str(self.context_size)+";"+str(self.chunk_threshold)+";"+str(self.load_threshold)+";"+\
-            str(self.chunk_weight)+";"+str(self.load_weight)+"]"
+            str(self.chunk_weight)+";"+str(self.load_weight)+";"+str(self.history)+"]"
 

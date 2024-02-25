@@ -32,3 +32,9 @@ pip install torch
 #bug: doesn't work with python 3.12 (ok >=3.9 <=3.11)
 pip install sentence-transformers
 
+# oracle thin
+pip install oracledb --upgrade
+# questo package richiede 
+pip install cryptography 
+# che ha un bug https://github.com/pyca/cryptography/issues/10300 nella versione 42.0.1
+pip install cryptography===41.0.7

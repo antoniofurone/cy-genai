@@ -4,6 +4,6 @@ modelli di text_gen poco utilizzabili per il QA:
     gpt2
 modelli di QA testati:
     Intel/dynamic_tinybert {"max_length": 512} -> poor
-    deepset/roberta-base-squad2 -> buono; 
+    deepset/roberta-base-squad2 ->good; 
 modelli di classificazione testati:
     SamLowe/roberta-base-go_emotions    

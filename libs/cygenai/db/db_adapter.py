@@ -1,13 +1,17 @@
 from enum import Enum
 
 from .pg_connector import CyPgConnector
-from .oracle_connector import CyOracleConnector
+from .orcl_connector import CyOracleConnector
+from .orcl_th_connector import CyOracleThConnector
+
 from .db_if import CyLangDB
 
 
 class CyDBAdapterEnum(Enum):
     PSYCOPG2=1
     CXORACLE=2
+    ORACLETHIN=3
+  
 
 
 class CyLangDBFactory():
@@ -16,6 +20,8 @@ class CyLangDBFactory():
              _impl=CyPgConnector(config)
         elif adapter==CyDBAdapterEnum.CXORACLE:
              _impl=CyOracleConnector(config)
+        elif adapter==CyDBAdapterEnum.ORACLETHIN:
+             _impl=CyOracleThConnector(config)
         else:
             _impl = None
             raise ValueError(adapter)

@@ -1,5 +1,5 @@
 from cygenai_env import CyLangEnv
-from cygenai_semantic_data import CyLangContext,CyLangLoad,CyLangChunks,CyLangLLMData,CyLangSource
+from cygenai_semantic_data import CyLangContext,CyLangLoad,CyLangChunk,CyLangChunks,CyLangLLMData,CyLangSource,CyLangHistory
 
 class CyLangContextDao():
     def __init__(self,env:CyLangEnv):
@@ -14,7 +14,7 @@ class CyLangContextDao():
     def get_by_name(self,name:str)->CyLangContext:
         sql="select a.id,a.context_name,a.chunk_size,a.chunk_overlap,a.embedding_model,"\
             +"a.context_type,a.context_size,a.chunk_threshold,a.load_threshold,a.chunk_weight,"\
-            +"a.load_weight,b.name as embs_type_name,c.name as context_type_name "\
+            +"a.load_weight,a.history,b.name as embs_type_name,c.name as context_type_name "\
             +"from public.cy_context a "\
             +"join public.cy_embs_types b on b.id=a.embedding_model "\
             +"join public.cy_context_types c on c.id=a.context_type "\
@@ -27,7 +27,8 @@ class CyLangContextDao():
         if row is not None:
             context=CyLangContext(row[1],row[2],row[3],row[4],row[5],id=row[0],context_size=row[6],
                                    chunk_threshold=row[7],load_threshold=row[8],chunk_weight=row[9],
-                                   load_weight=row[10],embeddings_model_name=row[11],context_type_name=row[12])
+                                   load_weight=row[10],history=row[11],
+                                   embeddings_model_name=row[12],context_type_name=row[13])
         else:
             context=None    
         dbConn.disconnect()    
@@ -36,7 +37,7 @@ class CyLangContextDao():
     def get_by_id(self,context_id:int)->CyLangContext:
         sql="select a.id,a.context_name,a.chunk_size,a.chunk_overlap,a.embedding_model,"\
             +"a.context_type,a.context_size,a.chunk_threshold,a.load_threshold,a.chunk_weight,"\
-            +"a.load_weight,b.name as embs_type_name,c.name as context_type_name "\
+            +"a.load_weight,a.history,b.name as embs_type_name,c.name as context_type_name "\
             +"from public.cy_context a "\
             +"join public.cy_embs_types b on b.id=a.embedding_model "\
             +"join public.cy_context_types c on c.id=a.context_type "\
@@ -50,7 +51,7 @@ class CyLangContextDao():
         if row is not None:
             context=CyLangContext(row[1],row[2],row[3],row[4],row[5],id=row[0],context_size=row[6],
                                    chunk_threshold=row[7],load_threshold=row[8],chunk_weight=row[9],load_weight=row[10],
-                                   embeddings_model_name=row[11],context_type_name=row[12])
+                                   history=row[11],embeddings_model_name=row[12],context_type_name=row[13])
         else:
             context=None    
         dbConn.disconnect()
@@ -59,7 +60,8 @@ class CyLangContextDao():
     def delete(self,id:int):
         cmds=["delete from public.cy_load_trace where load_id in (select load_id from public.cy_load where context_id="+str(id)+")"]
         cmds.append("delete from public.cy_chunk where load_id in (select id from public.cy_load where context_id="+str(id)+")")
-        cmds.append("delete from public.cy_llm where context_id="+str(id))      
+        cmds.append("delete from public.cy_llm where context_id="+str(id))  
+        cmds.append("delete from public.cy_history where context_id="+str(id))     
         cmds.append("delete from public.cy_source where context_id="+str(id))      
         cmds.append("delete from public.cy_load where context_id="+str(id))      
         cmds.append("delete from public.cy_context where id="+str(id))
@@ -74,7 +76,7 @@ class CyLangContextDao():
         
         sql="select a.id,a.context_name,a.chunk_size,a.chunk_overlap,a.embedding_model,"\
             +"a.context_type,a.context_size,a.chunk_threshold,a.load_threshold,a.chunk_weight,"\
-            +"a.load_weight,b.name as embs_type_name,c.name as context_type_name "\
+            +"a.load_weight,a.history,b.name as embs_type_name,c.name as context_type_name "\
             +"from public.cy_context a "\
             +"join public.cy_embs_types b on b.id=a.embedding_model "\
             +"join public.cy_context_types c on c.id=a.context_type"
@@ -86,7 +88,8 @@ class CyLangContextDao():
         for row in rows:
             context=CyLangContext(row[1],row[2],row[3],row[4],row[5],id=row[0],context_size=row[6],
                                    chunk_threshold=row[7],load_threshold=row[8],chunk_weight=row[9],
-                                   load_weight=row[10],embeddings_model_name=row[11],context_type_name=row[12])
+                                   load_weight=row[10],history=row[11],
+                                   embeddings_model_name=row[12],context_type_name=row[13])
             ret.append(context)
         dbConn.disconnect()
         return ret
@@ -114,6 +117,46 @@ class CyLangContextDao():
             ret.append({'id':row[0],'name':row[1]})
         dbConn.disconnect()
         return ret
+
+
+class CyLangHistoryDao():
+    def __init__(self,env:CyLangEnv):
+        self.__env=env 
+
+    def insert(self,history:CyLangHistory):
+        dbConn=self.__env.get_semantic_db_connector()
+        dbConn.connect()
+        dbConn.execute_command_values(history)
+        dbConn.disconnect()
+
+    def get_history(self,context_id:int,session_id:str,size:int)->list[CyLangHistory]:
+        ret=[]
+
+        sql="select query,answer from cy_history where context_id="+str(context_id)\
+            +" and session_id='"+session_id+"' order by time_stamp desc limit "+str(size)   
+
+        dbConn=self.__env.get_semantic_db_connector()
+        dbConn.connect()
+        cur=dbConn.execute_query(sql)
+        rows=cur.fetchall()
+        for row in rows:
+            hist=CyLangHistory(context_id=context_id,session_id=session_id,query=row[0],answer=row[1])
+            ret.append(hist)
+        dbConn.disconnect()
+        return ret
+
+
+    def clean_history(self):
+        history_timeout=self.__env.get_config().get_history_config()['time_out']
+        cmd="delete from cy_history where session_id in (select session_id from ("\
+            +"select session_id,EXTRACT(EPOCH from(CURRENT_TIMESTAMP-max(time_stamp))) as diff_sec from cy_history group by session_id"\
+            +") where diff_sec>"+str(history_timeout)+")"
+        print(cmd)
+        dbConn=self.__env.get_semantic_db_connector()
+        dbConn.connect()
+        dbConn.execute_command(cmd)
+        dbConn.disconnect()
+    
 
 class CyLangSourceDao():
     def __init__(self,env:CyLangEnv):

@@ -52,5 +52,10 @@
     "askdata":
         {
             "query_max_attempts":2
-        }            
+        },
+    "history":   
+        {
+            "size":4,
+            "time_out":600
+        }                
 }

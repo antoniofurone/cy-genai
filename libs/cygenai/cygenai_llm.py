@@ -8,8 +8,9 @@ from langchain_openai import OpenAI
 from langchain_google_vertexai import VertexAI
 from langchain.chains import LLMChain
 from langchain_community.llms import HuggingFaceHub
+from langchain_core.messages import AIMessage, HumanMessage
 
-from cygenai_semantic_data import CyLangChunk
+from cygenai_semantic_data import CyLangChunk,CyLangHistory
 
 class CyLangLLMType(Enum):
     CHAT_OPEAI=1
@@ -22,6 +23,7 @@ class CyLangLLM:
                  temperature:float=None,template:str=None,model_args:str=None,task:str=None,
                  local:bool=False,pt_pipeline:bool=False
                 ):
+              
         if template is None:
             self.template="""Answer the question based on the context below. If the
 question cannot be answered using the information provided answer
@@ -33,7 +35,7 @@ Question: {question}
 
 Answer: """
         else:
-            self.template=template    
+            self.template=template
 
         if llm is None:
         
@@ -105,18 +107,19 @@ Answer: """
             if self.temperature is not None and self.llm_type!=CyLangLLMType.HUGGING_FACE:
                     self.llm.temperature=self.temperature    
         else:
-            self.llm=llm 
-            self.pt_pipeline=False   
+            self.llm=llm  
+            self.pt_pipeline=False     
 
-    def invoke(self,coontexts:list[CyLangChunk], query:str, addition:str=None)->dict:
+    def invoke(self,contexts:list[CyLangChunk], query:str, addition:str=None,
+               hasHistory:bool=False,history:list[CyLangHistory]=None)->dict:
         
-        if not coontexts:
+        if not contexts:
             logging.warning("Array of chunks for context is empty")
         else:
-            logging.info("Array of chunks for context has length:"+str(len(coontexts)))
+            logging.info("Array of chunks for context has length:"+str(len(contexts)))
 
         context=[]
-        for ctx in coontexts:
+        for ctx in contexts:
             context.append(ctx.content)
 
         context='\n'.join(context) 
@@ -128,7 +131,8 @@ Answer: """
         if (self.pt_pipeline):
             return self.__invoke_pipeline(context=context,query=query)           
         else:
-            return self.__invoke_chain(context=context,query=query)
+            return self.__invoke_chain(context=context,query=query,
+                                       hasHistory=hasHistory,history=history)
     
     def __build_pipeline(self,model_kwargs:dict):
         from transformers import pipeline                    
@@ -141,9 +145,13 @@ Answer: """
 
         
     
-    def __invoke_chain(self,context:str,query:str):
+    def __invoke_chain(self,context:str,query:str,hasHistory:bool=False,history:list[CyLangHistory]=None):
         
-        prompt = PromptTemplate(input_variables=["context","question"],template=self.template)
+        if hasHistory:
+            prompt = PromptTemplate(input_variables=["context","question","history"],template=self.template)
+        else:    
+            prompt = PromptTemplate(input_variables=["context","question"],template=self.template)
+        
         llm_chain = LLMChain(prompt=prompt, llm=self.llm)
 
         logging.debug("-------------------- __invoke_chain: INIZIO LOGGING PARAMETRI LLM ---------------------")
@@ -152,11 +160,24 @@ Answer: """
         logging.debug("question="+query)
         logging.debug("-------------------- __invoke_chain: FINE LOGGING PARAMETRI LLM -----------------------")
 
-        return llm_chain.invoke(
-        {
-            "context": context,
-            "question": query
-        })     
+        if hasHistory:
+            hists=[]
+            if history is not None:
+                for hist in history:
+                    hists.append([HumanMessage(content=hist.query),AIMessage(content=hist.answer)])
+                
+            return llm_chain.invoke(
+            {
+                "context": context,
+                "question": query,
+                "history": hists
+            }) 
+        else:
+            return llm_chain.invoke(
+            {
+                "context": context,
+                "question": query
+            })     
 
     def __invoke_pipeline(self,context:str,query:str):
        
@@ -186,5 +207,3 @@ Answer: """
             raise ValueError("Task ["+self.task+"] not supported via pt pipeline")
 
         return answer 
-
-   

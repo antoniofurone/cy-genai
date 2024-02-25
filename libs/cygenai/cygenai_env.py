@@ -41,6 +41,9 @@ class CyLangConfig:
     def get_askdata_config(self)->dict:
         return self.__config_data['askdata']
     
+    def get_history_config(self)->dict:
+        return self.__config_data['history']
+    
     def get(self,key:str)->dict:
         return self.__config_data[key]
 
@@ -108,6 +111,7 @@ class CyLangEnv:
                 load_weight double precision not null,
                 embedding_model smallint not null,
                 context_type smallint not null,
+                history boolean not null default false,
                 CONSTRAINT fk_ctx_embs_model
                     FOREIGN KEY(embedding_model) 
                     REFERENCES cy_embs_types(id)
@@ -208,6 +212,19 @@ class CyLangEnv:
                 )"""
         dbConnector.execute_command(cmd)
 
+        logging.info("create table cy_history")
+        cmd="""CREATE TABLE IF NOT EXISTS cy_history(
+                context_id  integer not null,
+                session_id char(36) not null,
+                query text not null,
+                answer text not null,
+                time_stamp timestamp not null default CURRENT_TIMESTAMP,
+                CONSTRAINT fk_hist_context_id
+                    FOREIGN KEY(context_id) 
+                    REFERENCES cy_context(id)
+            )"""
+        dbConnector.execute_command(cmd)
+
         logging.info("create cosine idx on cy_chunk")
         cmd="""CREATE INDEX  ON cy_chunk
               USING hnsw(embedding vector_cosine_ops)
@@ -228,6 +245,10 @@ class CyLangEnv:
         
         logging.info("drop table cy_source")
         cmd="""DROP TABLE IF EXISTS cy_source"""
+        dbConnector.execute_command(cmd)
+
+        logging.info("drop table cy_history")
+        cmd="""DROP TABLE IF EXISTS cy_history"""
         dbConnector.execute_command(cmd)
 
         logging.info("drop table cy_chunk")
