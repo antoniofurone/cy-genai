@@ -41,9 +41,11 @@
             "host":"localhost",
             "port":8003
         },  
-    "secret":
+    "security":
         {
-            "encryption_key": "<your_encryption_key>"
+            "encryption_key": "LBYsjUQfC45hNG6HHLKbdm8d2foZ49ua6hjinziUcZ4=",
+            "cert_file":"C:/Users/User/VSProjects/sparklelang-ai/certs/cert.pem",
+            "key_file":"C:/Users/User/VSProjects/sparklelang-ai/certs/key.pem"
         },    
     "chatbot":
         {

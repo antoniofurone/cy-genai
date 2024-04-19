@@ -3,6 +3,7 @@ cyorg-genai-test-f703c8bc0505.json
 cygenai.json
 logs/
 loads/
+certs/
 .vscode/
 *_gf*
 *.pyc

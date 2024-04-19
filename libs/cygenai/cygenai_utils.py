@@ -1,4 +1,6 @@
 import locale
+import json
+import locale
 from threading import Thread
 
 
@@ -40,4 +42,17 @@ def format_cursor(rows:list):
                 formatted_row.append(value)
         formatted_res_sql.append(formatted_row)
     return  formatted_res_sql   
-    
+
+ 
+ #da lista python a JSON @GF
+def lista_a_json(lista):
+    headers = lista[0]
+    data = lista[1:]
+    result = []
+ 
+    for row in data:
+        result.append(dict(zip(headers, row)))
+ 
+    return json.dumps(result, indent=4)
+ 
+

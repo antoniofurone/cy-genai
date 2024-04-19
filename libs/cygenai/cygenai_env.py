@@ -1,6 +1,7 @@
 import json
 import logging,logging.handlers
 from db import CyLangDB,CyDBAdapterEnum,CyLangDBFactory
+import sys
 
 class CyLangConfig:
     def __init__(self,configFile) -> None:
@@ -32,8 +33,8 @@ class CyLangConfig:
     def get_web_server_config(self)->dict:
         return self.__config_data['web_server']
 
-    def get_secret_config(self)->dict:
-        return self.__config_data['secret']
+    def get_security_config(self)->dict:
+        return self.__config_data['security']
 
     def get_chatbot_config(self)->dict:
         return self.__config_data['chatbot']
@@ -60,17 +61,19 @@ class CyLangEnv:
     def __set_logger(self,logging_config:dict):
 
         logFormatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s') 
-        rootLogger = logging.getLogger()
+        logger= logging.getLogger()
         
-        fileHandler = logging.handlers.RotatingFileHandler(logging_config['fileName'],maxBytes=(1024*1024), backupCount=7,encoding='utf-8')
-        fileHandler.setFormatter(logFormatter)
-        rootLogger.addHandler(fileHandler)
-    
-        consoleHandler = logging.StreamHandler()
-        consoleHandler.setFormatter(logFormatter)
-        rootLogger.addHandler(consoleHandler)
-    
-        logger = logging.getLogger()
+        num_handlers=len(logger.handlers)
+      
+        if not num_handlers:
+            
+            fileHandler = logging.handlers.RotatingFileHandler(logging_config['fileName'],maxBytes=(1024*1024), backupCount=7,encoding='utf-8')
+            fileHandler.setFormatter(logFormatter)
+            logger.addHandler(fileHandler)
+        
+            consoleHandler = logging.StreamHandler(sys.stdout)
+            consoleHandler.setFormatter(logFormatter)
+            logger.addHandler(consoleHandler)
 
         if logging_config['level']=="INFO":
             logging_level=logging.INFO
@@ -88,7 +91,7 @@ class CyLangEnv:
             logging_level=logging.INFO
         
         logger.setLevel(logging_level)
-        
+            
 
     def get_semantic_db_connector(self)->CyLangDB:
         return CyLangDBFactory().getDB(CyDBAdapterEnum.PSYCOPG2,self.__config.get_semantic_db_config())   
@@ -197,7 +200,7 @@ class CyLangEnv:
                 name varchar(20) not null,
                 type_id smallint not null,
                 userid varchar(20) not null,
-                pwd varchar(20) not null,
+                pwd varchar(100) not null,
                 host varchar(20) not null,
                 port integer not null,
                 service_name varchar(30),
@@ -225,6 +228,28 @@ class CyLangEnv:
             )"""
         dbConnector.execute_command(cmd)
 
+        logging.info("create table cy_user")
+        cmd="""CREATE TABLE IF NOT EXISTS cy_user(
+                id SERIAL PRIMARY KEY,
+                email  	varchar(50) not null unique,
+                pwd		varchar(100) not null,
+                name   	varchar(50) not null,
+                surname varchar(50) not null
+            )"""
+        dbConnector.execute_command(cmd)
+
+        logging.info("create table cy_app")
+        cmd="""CREATE TABLE IF NOT EXISTS cy_app(
+                name  		varchar(30) not null PRIMARY KEY,
+                app_key		varchar(50) not null,
+                owner       integer not null,
+                CONSTRAINT fk_app_owner
+                    FOREIGN KEY(owner) 
+                    REFERENCES cy_user(id)
+            )"""
+        dbConnector.execute_command(cmd)
+
+
         logging.info("create cosine idx on cy_chunk")
         cmd="""CREATE INDEX  ON cy_chunk
               USING hnsw(embedding vector_cosine_ops)
@@ -243,6 +268,14 @@ class CyLangEnv:
         dbConnector=self.get_semantic_db_connector()
         dbConnector.connect()
         
+        logging.info("drop table cy_app")
+        cmd="""DROP TABLE IF EXISTS cy_app"""
+        dbConnector.execute_command(cmd)
+
+        logging.info("drop table cy_user")
+        cmd="""DROP TABLE IF EXISTS cy_user"""
+        dbConnector.execute_command(cmd)
+
         logging.info("drop table cy_source")
         cmd="""DROP TABLE IF EXISTS cy_source"""
         dbConnector.execute_command(cmd)

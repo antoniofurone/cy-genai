@@ -7,3 +7,9 @@ modelli di QA testati:
     deepset/roberta-base-squad2 ->good; 
 modelli di classificazione testati:
     SamLowe/roberta-base-go_emotions    
+
+#Template for history ?
+
+Given the following conversation, answer the follow up question based on the context below. 
+If the follow up question cannot be answered using the information provided answer 
+with "I don''t know" Chat History:{history} Context: {context} Follow Up Input: {question}

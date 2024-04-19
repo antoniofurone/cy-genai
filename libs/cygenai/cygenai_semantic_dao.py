@@ -1,5 +1,85 @@
 from cygenai_env import CyLangEnv
-from cygenai_semantic_data import CyLangContext,CyLangLoad,CyLangChunk,CyLangChunks,CyLangLLMData,CyLangSource,CyLangHistory
+from cygenai_semantic_data import CyLangContext,CyLangLoad,CyLangChunk,CyLangChunks,CyLangLLMData,CyLangSource,CyLangHistory,CyLangApp
+import hashlib
+import logging
+
+
+class CyLangUserDao():
+    def __init__(self,env:CyLangEnv):
+        self.__env=env
+
+    def login(self,email:str,pwd:str)->int:
+        
+        hash_object = hashlib.sha256()
+        hash_object.update(pwd.encode())
+        hash_password = hash_object.hexdigest()
+        
+        sql="select id from public.cy_user where email='"+email+"' and pwd='"+hash_password+"'"
+
+        ret=-1
+        dbConn=self.__env.get_semantic_db_connector()
+        dbConn.connect()
+        cur=dbConn.execute_query(sql)
+        row=cur.fetchone()
+        if row is not None:
+            ret=row[0]
+        dbConn.disconnect()
+       
+        return ret    
+
+class CyLangAppDao():
+    def __init__(self,env:CyLangEnv):
+        self.__env=env
+
+    def insert(self,app:CyLangApp):
+        dbConn=self.__env.get_semantic_db_connector()
+        dbConn.connect()
+        dbConn.execute_command_values(app)
+        dbConn.disconnect()
+
+    def update_key(self,app:CyLangApp):
+        cmd="update public.cy_app set app_key='"+app.app_key+"' where name='"+app.name+"'"
+        dbConn=self.__env.get_semantic_db_connector()
+        dbConn.connect()
+        dbConn.execute_command(cmd)
+        dbConn.disconnect()
+
+    def get_all(self)->list[CyLangApp]:
+        ret=[]
+        
+        sql="select name,app_key,owner from public.cy_app"
+          
+        dbConn=self.__env.get_semantic_db_connector()
+        dbConn.connect()
+        cur=dbConn.execute_query(sql)
+        rows=cur.fetchall()
+        for row in rows:
+            app=CyLangApp(row[0],row[1],row[2])
+            ret.append(app)
+        dbConn.disconnect()
+        return ret
+    
+    def get_by_name(self,name:str)->CyLangApp:
+        sql="select name,app_key,owner from public.cy_app where name='"+name+"'"
+      
+        dbConn=self.__env.get_semantic_db_connector()
+        dbConn.connect()
+        cur=dbConn.execute_query(sql)
+        row=cur.fetchone()
+        if row is not None:
+            context=CyLangApp(name=row[0],app_key=row[1],owner=row[2])
+        else:
+            context=None    
+        dbConn.disconnect()    
+        return context
+
+    def delete(self,name:str):
+        cmds=["delete from public.cy_app where name='"+name+"'"]
+
+        dbConn=self.__env.get_semantic_db_connector()
+        dbConn.connect()
+        dbConn.execute_commands(cmds)
+        dbConn.disconnect()    
 
 class CyLangContextDao():
     def __init__(self,env:CyLangEnv):
@@ -150,8 +230,8 @@ class CyLangHistoryDao():
         history_timeout=self.__env.get_config().get_history_config()['time_out']
         cmd="delete from cy_history where session_id in (select session_id from ("\
             +"select session_id,EXTRACT(EPOCH from(CURRENT_TIMESTAMP-max(time_stamp))) as diff_sec from cy_history group by session_id"\
-            +") where diff_sec>"+str(history_timeout)+")"
-        print(cmd)
+            +") as x where diff_sec>"+str(history_timeout)+")"
+       
         dbConn=self.__env.get_semantic_db_connector()
         dbConn.connect()
         dbConn.execute_command(cmd)

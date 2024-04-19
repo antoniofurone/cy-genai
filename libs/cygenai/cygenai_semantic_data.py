@@ -98,7 +98,23 @@ class CyLangHistory(CyLangData):
     def get_values(self)->list:
         return [(self.context_id,self.session_id,self.query,self.answer)]
     
+class CyLangApp(CyLangData):
+    def __init__(self,name:str,app_key:str,owner:str):
+        self.name=name
+        self.app_key=app_key
+        self.owner=owner
 
+    def get_table(self)->str:
+        return "cy_app"    
+    
+    def get_schema(self)->str:
+        return "public"   
+
+    def get_cols(self)->list:
+        return ['name','app_key','owner']
+
+    def get_values(self)->list:
+        return [(self.name,self.app_key,self.owner)]
 
 class CyLangSource(CyLangData):
     def __init__(self,context_id:str,name:str,source_type_id:int,

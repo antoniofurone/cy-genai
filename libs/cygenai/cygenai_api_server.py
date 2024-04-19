@@ -2,6 +2,7 @@ import os
 import logging
 import sys
 import uvicorn
+import ssl
 from cygenai_env import CyLangEnv
 
 class CyLangAPIServer:
@@ -16,8 +17,14 @@ class CyLangAPIServer:
         port=api_config['port']
         logging.info("api_host="+host)
         logging.info("api_port="+str(port))
+
+        # http
+        # uvicorn.run("cygenai_api:app", host=host, port=port,log_level="info",reload=False)
         
-        uvicorn.run("cygenai_api:app", host=host, port=port, log_level="info",reload=True)
+        # https
+        uvicorn.run("cygenai_api:app", host=host, port=port,log_level="info",reload=False,
+                      ssl_keyfile=self.__env.get_config().get_security_config()['key_file'], ssl_certfile=self.__env.get_config().get_security_config()['cert_file'])
+
         logging.info("... api server stopped")
 
 
@@ -25,7 +32,7 @@ def main():
     
     config_file=os.environ.get('CYGENAI_CONFIG_PATH')
     if config_file is None:
-        config_file=os.environ.get('HOME','.')+'/cygenai.json'
+        config_file=os.environ.get('HOME','.')+'/sparklelang.json'
     
     if os.path.exists(config_file):    
         env=CyLangEnv(configFile=config_file)  

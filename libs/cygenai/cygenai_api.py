@@ -4,7 +4,8 @@ import logging,logging.handlers
 
 from typing import Union,Optional
 from enum import Enum
-from fastapi import FastAPI,HTTPException,Request,status,Query,UploadFile
+from fastapi import FastAPI,HTTPException,Request,status,Query,UploadFile,Header
+from typing_extensions import Annotated
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from pydantic import BaseModel,Field
@@ -13,11 +14,12 @@ from tabulate import tabulate
 
 from cygenai_env import CyLangEnv
 from cygenai_semantic import CySemanticDB
-from cygenai_semantic_data import CyLangContext,CyLangLLMData,CyLangContextType,CyLangSourceType,CyLangSource,CyLangHistory
+from cygenai_semantic_data import CyLangContext,CyLangLLMData,CyLangContextType,CyLangSourceType,CyLangSource,CyLangHistory,CyLangApp
 from cygenai_llm import CyLangLLM,CyLangLLMType
 from embeddings import CyEmbeddingsModel
 from document_loaders import CyDocumentLoaderType
-from cygenai_utils import xor,clean_query,format_cursor
+from cygenai_utils import xor,clean_query,format_cursor,lista_a_json
+from cryptography.fernet import Fernet
 
 from db import CyLangDBFactory,CyDBAdapterEnum
 
@@ -27,14 +29,19 @@ def startup():
 
     config_file=os.environ.get('CYGENAI_CONFIG_PATH')
     if config_file is None:
-        config_file=os.environ.get('HOME','.')+'/cygenai.json'
+        config_file=os.environ.get('HOME','.')+'/sparklelang.json'
 
     if os.path.exists(config_file):    
         env=CyLangEnv(configFile=config_file)  
         g_data['env']=env
         logging.info("startup...")
     else:
-        logging.error('%s not exists. Please configure environment variable CYGENAI_CONFIG_PATH',config_file)    
+        logging.error('%s not exists. Please configure environment variable CYGENAI_CONFIG_PATH',config_file) 
+
+    semanticDB=CySemanticDB(env)
+    g_data['apps']=semanticDB.get_app_all()
+
+
 
 def shutdown():
     pass
@@ -45,6 +52,7 @@ async def lifespan(app: FastAPI):
     startup() 
     yield
     # do shutdown
+    shutdown()
 
 app = FastAPI(lifespan=lifespan)
 
@@ -71,38 +79,108 @@ def validation_exception_handler(request: Request, exc: Exception):
         },
     )
 
-
-
 @app.get("/")
 def read_root():
     env=g_data['env']
+    logging.info("get_version=" + env.get_config().get_version())
     return env.get_config().get_version()
 
-@app.get("/contexts")
-def get_contexts():
+@app.get("/apps")
+def get_apps(email: Annotated[str, Header()],
+             pwd: Annotated[str, Header()]
+             ):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
+    login=semanticDB.login(email=email,pwd=pwd)
+    if login==-1:
+        raise HTTPException(status_code=401, detail="Invalid emal or password")
+    return semanticDB.get_app_all()
+
+@app.get("/apps/{name}")
+def get_app(email: Annotated[str, Header()],pwd: Annotated[str, Header()],name:str):
+    env=g_data['env'] 
+    semanticDB=CySemanticDB(env)
+    login=semanticDB.login(email=email,pwd=pwd)
+    if login==-1:
+        raise HTTPException(status_code=401, detail="Invalid emal or password")
+    return semanticDB.get_app(name)
+
+
+@app.post("/apps/",status_code=status.HTTP_201_CREATED)
+def add_app(email: Annotated[str, Header()],pwd: Annotated[str, Header()],app_name: str):
+    env=g_data['env'] 
+    semanticDB=CySemanticDB(env)
+    login=semanticDB.login(email=email,pwd=pwd)
+    if login==-1:
+        raise HTTPException(status_code=401, detail="Invalid emal or password")
+    
+    import uuid 
+    app_key = 'CyLang-'+str(uuid.uuid4()) 
+
+    app=semanticDB.get_app(name=app_name)
+    if app is None:
+        app=CyLangApp(name=app_name,app_key=app_key,owner=login)
+        semanticDB.add_app(app)
+    else:
+        app.app_key=app_key
+        semanticDB.renew_app_key(app)    
+
+    g_data['apps']=semanticDB.get_app_all()
+    return app
+
+@app.delete("/apps/{name}",status_code=status.HTTP_204_NO_CONTENT)
+def remove_app(email: Annotated[str, Header()],pwd: Annotated[str, Header()],name: str):
+    env=g_data['env'] 
+    semanticDB=CySemanticDB(env)
+    login=semanticDB.login(email=email,pwd=pwd)
+    if login==-1:
+        raise HTTPException(status_code=401, detail="Invalid emal or password")
+    semanticDB.remove_app(name)
+    g_data['apps']=semanticDB.get_app_all()
+    
+
+
+@app.get("/contexts")
+def get_contexts(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()]):
+    env=g_data['env'] 
+    semanticDB=CySemanticDB(env)
+    
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")   
+    
     return semanticDB.get_context_all()
 
 @app.get("/contexts/{name}")
-def get_context(name:str):
+def get_context(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],name:str):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
+    
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")   
+    
     ctx=semanticDB.get_context(name)
     if ctx is None:
         raise HTTPException(status_code=404, detail="Context not found")
     return semanticDB.get_context(name)
 
 @app.get("/embeddings-types")
-def get_embedding_types():
-    env=g_data['env'] 
+def get_embedding_types(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()]):
+    env=g_data['env']
     semanticDB=CySemanticDB(env)
+    
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")   
+    
     return semanticDB.get_embs_types()
 
 @app.get("/context-types")
-def get_context_types():
+def get_context_types(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()]):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
+
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+
     return semanticDB.get_context_types()
 
 
@@ -120,20 +198,27 @@ class Context (BaseModel):
     history:bool=False
 
 
-@app.post("/context/",status_code=status.HTTP_201_CREATED)
-def create_context(context: Context):
+@app.post("/contexts/",status_code=status.HTTP_201_CREATED)
+def create_context(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],context: Context):
     ctx=CyLangContext(context.name,context.chunk_size,context.chunk_overlap,context.embeddings_model.value,context.context_type.value,
                        context_size=context.context_size,chunk_threshold=context.chunk_threshold,load_threshold=context.load_threshold,
                        chunk_weight=context.chunk_weight,load_weight=context.load_weight,history=context.history)
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
+
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+
     semanticDB.create_context(ctx)    
     return context
 
-@app.delete("/context/{context_id}",status_code=status.HTTP_204_NO_CONTENT)
-def delete_context(context_id: int):
+@app.delete("/contexts/{context_id}",status_code=status.HTTP_204_NO_CONTENT)
+def delete_context(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],context_id: int):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
+
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
     
     if semanticDB.get_context_by_id(context_id) is None:
        raise HTTPException(status_code=404, detail="Context not found")     
@@ -143,16 +228,24 @@ def delete_context(context_id: int):
     return context_id
 
 @app.get("/source-types")
-def get_source_types():
+def get_source_types(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()]):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
+
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+
     return semanticDB.get_source_types()
 
 
 @app.get("/sources/{context_id}")
-def get_sources(context_id:int):
+def get_sources(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],context_id:int):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
+
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+
     return semanticDB.get_source_all(context_id)
 
 
@@ -168,27 +261,36 @@ class Source(BaseModel):
     password:str
 
 @app.post("/sources/",status_code=status.HTTP_201_CREATED)
-def add_source(source: Source):
+def add_source(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],source: Source):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
+
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+
     if semanticDB.get_context_by_id(source.context_id) is None:
        raise HTTPException(status_code=404, detail="Context not found")     
     
-    # da rivedere
-    encr_key=env.get_config().get_secret_config()['encryption_key']
-    source.password=xor(source.password, encr_key) 
+   
+    key=env.get_config().get_security_config()['encryption_key']
+    fernet = Fernet(key)
+    source.password=fernet.encrypt(source.password.encode())
 
     source=CyLangSource(context_id=source.context_id,name=source.name,source_type_id=source.source_type.value,
                           host=source.host,port=source.port,service_name=source.service_name,data_base=source.database,
-                          user_id=source.userId,password=source.password)
+                          user_id=source.userId,password=source.password.decode())
     
     semanticDB.add_source(source)  
     return source
 
 @app.get("/sources/{context_id}/{name}")
-def get_source(context_id:int,name:str):
+def get_source(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],context_id:int,name:str):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
+
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+
     ctx=semanticDB.get_context_by_id(context_id=context_id)
     if ctx is None:
         raise HTTPException(status_code=404, detail="Context not found")
@@ -198,10 +300,13 @@ def get_source(context_id:int,name:str):
     return source
 
 @app.delete("/sources/{context_id}/{name}",status_code=status.HTTP_204_NO_CONTENT)
-def remove_source(context_id:int,name:str):
+def remove_source(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],context_id:int,name:str):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
     
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+
     if semanticDB.get_context_by_id(context_id) is None:
        raise HTTPException(status_code=404, detail="Context not found")     
     
@@ -213,16 +318,24 @@ def remove_source(context_id:int,name:str):
 
 
 @app.get("/llms/{context_id}")
-def get_llms(context_id:int):
+def get_llms(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],context_id:int):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
+    
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+    
     return semanticDB.get_llm_all(context_id)
 
 
 @app.get("/llm-types")
-def get_llm_types():
+def get_llm_types(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()]):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
+    
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+
     return semanticDB.get_llm_types()
 
 
@@ -240,9 +353,13 @@ class LLM(BaseModel):
     pt_pipeline:bool=False
 
 @app.post("/llms/",status_code=status.HTTP_201_CREATED)
-def add_llm(llm: LLM):
+def add_llm(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],llm: LLM):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
+
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+
     if semanticDB.get_context_by_id(llm.context_id) is None:
        raise HTTPException(status_code=404, detail="Context not found")     
     
@@ -253,9 +370,13 @@ def add_llm(llm: LLM):
     return llm
 
 @app.get("/llms/{context_id}/{name}")
-def get_llm(context_id:int,name:str):
+def get_llm(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],context_id:int,name:str):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
+
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+
     ctx=semanticDB.get_context_by_id(context_id=context_id)
     if ctx is None:
         raise HTTPException(status_code=404, detail="Context not found")
@@ -265,10 +386,13 @@ def get_llm(context_id:int,name:str):
     return llm
 
 @app.delete("/llms/{context_id}/{name}",status_code=status.HTTP_204_NO_CONTENT)
-def remove_llm(context_id:int,name:str):
+def remove_llm(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],context_id:int,name:str):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
     
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+
     if semanticDB.get_context_by_id(context_id) is None:
        raise HTTPException(status_code=404, detail="Context not found")     
     
@@ -279,11 +403,15 @@ def remove_llm(context_id:int,name:str):
     return str(context_id)+";"+name
 
 @app.get("/sessions")
-def get_session():
+def get_session(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()]):
     env=g_data['env'] 
     import uuid 
     
     semanticDB=CySemanticDB(env)
+
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+
     semanticDB.clean_history() 
       
     id = uuid.uuid4() 
@@ -300,9 +428,12 @@ class Query(BaseModel):
 
 
 @app.post("/llm-query/",status_code=status.HTTP_200_OK)
-def llm_query(query: Query):
+def llm_query(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],query: Query):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
+
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")                 
 
     ctx=semanticDB.get_context_by_id(query.context_id)
     if ctx is None:
@@ -363,7 +494,7 @@ def llm_query(query: Query):
         else:
             res=res['text']     
     
-    if ctx.history:
+    if ctx.history and ctx.context_type_id != CyLangContextType.ASK_DATA.value:
         semanticDB.add_history(CyLangHistory(context_id=ctx.id,session_id=query.session_id,
                                               query=query.query,answer=res))
 
@@ -376,8 +507,10 @@ def llm_query(query: Query):
         if source is None:
             raise HTTPException(status_code=404, detail="Source not found") 
 
-        encr_key=env.get_config().get_secret_config()['encryption_key']
-        source.password=xor(source.password,encr_key)
+        key=env.get_config().get_security_config()['encryption_key']
+        fernet = Fernet(key)
+        source.password=fernet.decrypt(source.password).decode()
+        #logging.info("password="+str(source.password))
        
         if source.source_type_id==CyLangSourceType.ORACLE.value:
             db_config={"user": source.user_id,"password": source.password, "host": source.host, 
@@ -406,6 +539,11 @@ def llm_query(query: Query):
                 sql =clean_query(res)
 
                 logging.info("sql="+sql)
+
+                if ctx.history and ctx.context_type_id :
+                    semanticDB.add_history(CyLangHistory(context_id=ctx.id,session_id=query.session_id,
+                                              query=query.query,answer=sql))
+
                 res_sql = db_conn.execute_select_query(sql)
                 
                 error_occurred = False 
@@ -421,11 +559,7 @@ def llm_query(query: Query):
                 attempts += 1
                 if attempts < max_attempts:
                     res = llm.invoke(contexts=chunks, query=query.query, addition=addition,hasHistory=ctx.history,history=history)['text']
-
-                if ctx.history:
-                    semanticDB.add_history(CyLangHistory(context_id=ctx.id,session_id=query.session_id,
-                                              query=query.query,answer=res))   
-
+                    
                 else:
                     logging.info("Maximum number of attempts exceeded. Breaking the loop.")
         
@@ -436,9 +570,11 @@ def llm_query(query: Query):
             if query.askdata_output_fmt is not None:
                 if  query.askdata_output_fmt=='html':
                     formatted_res_sql=format_cursor(res_sql)
-                    res = tabulate(formatted_res_sql, tablefmt="html")  
+                    res = tabulate(formatted_res_sql, tablefmt="html") 
+                elif query.askdata_output_fmt=='JSON':
+                    res=lista_a_json(res_sql)
                 else:
-                    res=json.dumps(res_sql)
+                    res=json.dumps(res_sql)  
             else:
                     res=json.dumps(res_sql)           
         else:
@@ -453,10 +589,14 @@ class LoadFolder(BaseModel):
 
 
 @app.post("/load-folders/",status_code=status.HTTP_201_CREATED)
-def create_folder(folder: LoadFolder):
+def create_folder(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],folder: LoadFolder):
     env=g_data['env'] 
     
     semanticDB=CySemanticDB(env)
+    
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+    
     if semanticDB.get_context_by_id(folder.context_id) is None:
        raise HTTPException(status_code=404, detail="Context not found")     
     
@@ -479,11 +619,13 @@ def create_folder(folder: LoadFolder):
     return folder_path
 
 @app.get("/load-folders/{context_id}")
-def get_folder_list(context_id:int,folder:str=None):
+def get_folder_list(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],context_id:int,folder:str=None):
     env=g_data['env'] 
     
     semanticDB=CySemanticDB(env)
-    
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+
     if semanticDB.get_context_by_id(context_id) is None:
        raise HTTPException(status_code=404, detail="Context not found")     
     
@@ -503,10 +645,12 @@ def get_folder_list(context_id:int,folder:str=None):
     return os.listdir(folder_path)
 
 @app.delete("/load-folders/{context_id}",status_code=status.HTTP_204_NO_CONTENT)
-def remove_folder(context_id:int,folder:str=None):
+def remove_folder(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],context_id:int,folder:str=None):
     env=g_data['env'] 
     
     semanticDB=CySemanticDB(env)
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
     
     if semanticDB.get_context_by_id(context_id) is None:
        raise HTTPException(status_code=404, detail="Context not found")     
@@ -531,10 +675,13 @@ def remove_folder(context_id:int,folder:str=None):
 import shutil
 
 @app.post("/load-files/{context_id}",status_code=status.HTTP_201_CREATED)
-def upload_file(file:UploadFile,context_id:int,folderPath:str=None):
+def upload_file(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],file:UploadFile,context_id:int,folderPath:str=None):
     env=g_data['env'] 
     
     semanticDB=CySemanticDB(env)
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+    
     if semanticDB.get_context_by_id(context_id) is None:
        raise HTTPException(status_code=404, detail="Context not found")    
 
@@ -571,11 +718,13 @@ class LoadFile(BaseModel):
 
 
 @app.get("/load-files/{context_id}")
-def get_file(context_id:int,file_path:str):
+def get_file(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],context_id:int,file_path:str):
     env=g_data['env'] 
     
     semanticDB=CySemanticDB(env)
-    
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+
     if semanticDB.get_context_by_id(context_id) is None:
        raise HTTPException(status_code=404, detail="Context not found")     
     
@@ -601,10 +750,12 @@ def get_file(context_id:int,file_path:str):
 
 
 @app.delete("/load-files/",status_code=status.HTTP_204_NO_CONTENT)
-def remove_file(load_file:LoadFile):
+def remove_file(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],load_file:LoadFile):
     env=g_data['env'] 
     
     semanticDB=CySemanticDB(env)
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
     
     if semanticDB.get_context_by_id(load_file.context_id) is None:
        raise HTTPException(status_code=404, detail="Context not found")     
@@ -634,9 +785,12 @@ class CyDocumentLoaderType(Enum):
     HTML=4
 
 @app.get("/load-types")
-def get_load_types():
+def get_load_types(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()]):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+    
     return semanticDB.get_load_types()
 
 class Load(BaseModel):
@@ -648,9 +802,11 @@ class Load(BaseModel):
 
 
 @app.post("/loads/",status_code=status.HTTP_201_CREATED)
-def add_load(load: Load):
+def add_load(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],load: Load):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
 
     load_root_folder=env.get_config().get_load_config()['root_folder']
     if load_root_folder is None:
@@ -664,24 +820,33 @@ def add_load(load: Load):
     return load
 
 @app.get("/context-loads/{contex_id}")
-def get_loads_by_context(context_id:int):
+def get_loads_by_context(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],context_id:int):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+
     return semanticDB.get_load_all(context_id)
 
 @app.get("/loads/{load_id}")
-def get_load(load_id:int):
+def get_load(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],load_id:int):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+
     load=semanticDB.get_load_by_id(load_id)
     if load is None:
         raise HTTPException(status_code=404, detail="Load not found")  
     return semanticDB.get_load_by_id(load_id)
 
 @app.delete("/loads/{load_id}",status_code=status.HTTP_204_NO_CONTENT)
-def remove_load(load_id:int):
+def remove_load(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],load_id:int):
     env=g_data['env'] 
     semanticDB=CySemanticDB(env)
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+
     load=semanticDB.get_load_by_id(load_id)
     if load is None:
         raise HTTPException(status_code=404, detail="Load not found")   

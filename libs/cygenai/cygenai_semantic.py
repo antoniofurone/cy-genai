@@ -6,15 +6,42 @@ import logging,logging.handlers
 from cygenai_env import CyLangEnv
 from text_splitter import CyTextSplitter
 from embeddings import CyEmbeddings,CyEmbeddingsBatch,CyEmbeddingsModel
-from cygenai_semantic_data import CyLangContext,CyLangLoad,CyLangChunk,CyLangChunks,CyLangLLMData,CyLangSource,CyLangHistory
-from cygenai_semantic_dao import CyLangContextDao,CyLangLLMDao,CyLangLoadDao,CyLangChunkDao,CyLangSourceDao,CyLangHistoryDao
+from cygenai_semantic_data import CyLangContext,CyLangLoad,CyLangChunk,CyLangChunks,CyLangLLMData,CyLangSource,CyLangHistory,CyLangApp
+from cygenai_semantic_dao import CyLangContextDao,CyLangLLMDao,CyLangLoadDao,CyLangChunkDao,CyLangSourceDao,CyLangHistoryDao,CyLangAppDao,CyLangUserDao
 from cygenai_utils import ThreadAdapter
 from document_loaders import CyDocumentLoader,CyDocumentLoaderType
 
 
 class CySemanticDB:
     def __init__(self,env:CyLangEnv):
-        self.__env=env
+        self.__env=env    
+
+    def login(self,email:str,pwd:str):
+        return CyLangUserDao(self.__env).login(email,pwd)
+    
+    def add_app(self,app:CyLangApp):
+        CyLangAppDao(self.__env).insert(app)
+    
+    def renew_app_key(self,app:CyLangApp):
+        CyLangAppDao(self.__env).update_key(app)
+
+    def check_app_key(sel,apps:list[CyLangApp],app_name:str,app_key:str)->bool:
+        ret=False
+        if apps is not None:
+            for app in apps:
+                if app.name==app_name and app.app_key==app_key:
+                   ret=True
+                   break
+        return ret             
+
+    def get_app_all(self):
+        return CyLangAppDao(self.__env).get_all()
+
+    def get_app(self,name:str):
+        return CyLangAppDao(self.__env).get_by_name(name)
+
+    def remove_app(self,name:str):
+        return CyLangAppDao(self.__env).delete(name)
 
     def create_context(self,context:CyLangContext):
         CyLangContextDao(self.__env).insert(context)

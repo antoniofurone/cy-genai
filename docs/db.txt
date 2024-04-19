@@ -70,3 +70,4 @@ CREATE TABLE IF NOT EXISTS cy_source_types(
 
 insert into cy_source_types(id,name) values (1,'Oracle');
 insert into cy_source_types(id,name) values (2,'PostgreSQL');
+insert into cy_source_types(id,name) values (3,'OracleThin');

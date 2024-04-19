@@ -15,7 +15,7 @@ def startup():
     
     config_file=os.environ.get('CYGENAI_CONFIG_PATH')
     if config_file is None:
-        config_file=os.environ.get('HOME','.')+'/cygenai.json'
+        config_file=os.environ.get('HOME','.')+'/sparklelang.json'
     
     if os.path.exists(config_file):    
         env=CyLangEnv(configFile=config_file)  

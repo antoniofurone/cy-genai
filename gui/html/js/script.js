@@ -2,7 +2,9 @@ $(document).ready(() => {
 
 	// set visitor name
 	let $userName = "";
-	let $urlBase="http://localhost:8000"
+	let $urlBase="https://localhost:8000"
+	let $app_name="test_app"
+	let $app_key="CyLang-9da11944-2fb0-462d-a79d-d586cf2f1625"
 	let $session_id="";
 
 	// start chatbox
@@ -19,7 +21,8 @@ $(document).ready(() => {
 		$.ajax({
 			url: $urlBase+'/contexts',
 			headers: {
-				//'Content-Type': 'application/x-www-form-urlencoded'
+				'app-name':$app_name,
+				'app-key':$app_key
 			},
 			type: "GET", 
 			dataType: "json",
@@ -43,7 +46,8 @@ $(document).ready(() => {
 				$.ajax({
 					url: $urlBase+'/sessions',
 					headers: {
-						//'Content-Type': 'application/x-www-form-urlencoded'
+						'app-name':$app_name,
+						'app-key':$app_key
 					},
 					type: "GET", 
 					dataType: "json",
@@ -61,7 +65,8 @@ $(document).ready(() => {
 				$.ajax({
 					url: $urlBase+'/llms/'+$('#sel_contexts').val(),
 					headers: {
-						//'Content-Type': 'application/x-www-form-urlencoded'
+						'app-name':$app_name,
+						'app-key':$app_key	
 					},
 					type: "GET", 
 					dataType: "json",
@@ -108,7 +113,8 @@ $(document).ready(() => {
 		$.ajax({
 			url: $urlBase+'/sessions',
 			headers: {
-				//'Content-Type': 'application/x-www-form-urlencoded'
+				'app-name':$app_name,
+				'app-key':$app_key	
 			},
 			type: "GET", 
 			dataType: "json",
@@ -125,7 +131,8 @@ $(document).ready(() => {
 		$.ajax({
 			url: $urlBase+'/llms/'+$('#sel_contexts').val(),
 			headers: {
-				//'Content-Type': 'application/x-www-form-urlencoded'
+				'app-name':$app_name,
+				'app-key':$app_key	
 			},
 			type: "GET", 
 			dataType: "json",
@@ -187,7 +194,8 @@ $(document).ready(() => {
 		$.ajax({
 			contentType: 'application/json',
 			headers: {
-				//'Content-Type': 'application/x-www-form-urlencoded'
+				'app-name':$app_name,
+				'app-key':$app_key	
 			},
 			data: JSON.stringify({ "query": userMessage,"context_id":$('#sel_contexts').val(),llm_name:$('#sel_llms').val(),
 				askdata_output_fmt:'html',session_id: $session_id}),
@@ -310,7 +318,6 @@ $(document).ready(() => {
 		$("#message").append($smiley);
 		$("#message").select(); // ==> BUG: message field not selected after adding smiley !! 
 	});
-
 
 
 
