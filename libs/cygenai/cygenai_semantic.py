@@ -7,7 +7,7 @@ from cygenai_env import CyLangEnv
 from text_splitter import CyTextSplitter
 from embeddings import CyEmbeddings,CyEmbeddingsBatch,CyEmbeddingsModel
 from cygenai_semantic_data import CyLangContext,CyLangLoad,CyLangChunk,CyLangChunks,CyLangLLMData,CyLangSource,CyLangHistory,CyLangApp
-from cygenai_semantic_dao import CyLangContextDao,CyLangLLMDao,CyLangLoadDao,CyLangChunkDao,CyLangSourceDao,CyLangHistoryDao,CyLangAppDao,CyLangUserDao
+from cygenai_semantic_dao import CyLangContextDao,CyLangLLMDao,CyLangLoadDao,CyLangChunkDao,CyLangSourceDao,CyLangHistoryDao,CyLangAppDao,CyLangUserDao,CyLangSpeechRecognitionDao
 from cygenai_utils import ThreadAdapter
 from document_loaders import CyDocumentLoader,CyDocumentLoaderType
 
@@ -66,6 +66,9 @@ class CySemanticDB:
     
     def get_source_types(self)->list:
         return CyLangSourceDao(self.__env).get_types()
+
+    def get_speech_recognizer_types(self)->list:
+        return CyLangSpeechRecognitionDao(self.__env).get_types()
 
     def add_source(self,source:CyLangSource):
         CyLangSourceDao(self.__env).insert(source)

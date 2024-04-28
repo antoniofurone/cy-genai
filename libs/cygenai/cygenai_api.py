@@ -16,6 +16,7 @@ from cygenai_env import CyLangEnv
 from cygenai_semantic import CySemanticDB
 from cygenai_semantic_data import CyLangContext,CyLangLLMData,CyLangContextType,CyLangSourceType,CyLangSource,CyLangHistory,CyLangApp
 from cygenai_llm import CyLangLLM,CyLangLLMType
+from cygenai_speech_recognition import CyLangSpeechRecognition,CyLangSpeechRecognizerType
 from embeddings import CyEmbeddingsModel
 from document_loaders import CyDocumentLoaderType
 from cygenai_utils import xor,clean_query,format_cursor,lista_a_json
@@ -853,3 +854,60 @@ def remove_load(app_name: Annotated[str, Header()],app_key: Annotated[str, Heade
     
     semanticDB.remove_load(load_id)
     return str(load_id)
+
+@app.get("/speech-recognizer-types")
+def get_speech_recognizer_types(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()]):
+    env=g_data['env'] 
+    semanticDB=CySemanticDB(env)
+    
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+
+    return semanticDB.get_speech_recognizer_types()
+
+
+@app.post("/speech-recognize/{context_id}/{speech_recognizer_type}",status_code=status.HTTP_200_OK)
+def speech_recognize(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],
+                file:UploadFile,context_id:int,speech_recognizer_type:int,
+                folderPath:str=None,language:str=None):
+    env=g_data['env'] 
+    
+    semanticDB=CySemanticDB(env)
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+    
+    if semanticDB.get_context_by_id(context_id) is None:
+       raise HTTPException(status_code=404, detail="Context not found")    
+
+    load_root_folder=env.get_config().get_load_config()['root_folder']
+    if load_root_folder is None:
+        raise HTTPException(status_code=404, detail="You shoud configure load root_folder")
+
+    file_path=load_root_folder+"/ctx_"+str(context_id)
+    if not os.path.exists(file_path):
+        os.makedirs(file_path)
+
+    if folderPath is not None:
+        file_path=file_path+'/'+folderPath
+    file_path=file_path+'/'+file.filename    
+   
+    try:
+        with open(file_path, 'wb') as f:
+            shutil.copyfileobj(file.file, f)
+    
+    except Exception:
+        raise HTTPException(status_code=500, detail="There was an error uploading the file")  
+    finally:
+        file.file.close()
+
+    # recognize
+    text_rcgn=""
+    if language is None:
+        text_rcgn=CyLangSpeechRecognition(speech_type=speech_recognizer_type).recognize(file_path=file_path)
+    else:
+        text_rcgn=CyLangSpeechRecognition(speech_type=speech_recognizer_type).recognize(file_path=file_path,language=language)
+
+    # delete file
+    os.remove(file_path)    
+
+    return text_rcgn

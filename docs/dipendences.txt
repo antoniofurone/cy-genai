@@ -38,3 +38,16 @@ pip install oracledb --upgrade
 pip install cryptography 
 # che ha un bug https://github.com/pyca/cryptography/issues/10300 nella versione 42.0.1
 pip install cryptography===41.0.7
+
+
+https://pypi.org/project/SpeechRecognition/
+pip install SpeechRecognition
+pip install pyaudio
+pip install soundfile
+pip install openai-whisper --no-cache-dir
+pip install google-cloud-speech
+
+pip install pydub
+# necessita dell'installazione di ffmpeg
+pip install matplotlib
+

@@ -27,7 +27,7 @@ class CyEmbeddings:
         return    
     
     def __get_GoogleVertexAiModel(self):
-        return VertexAIEmbeddings()
+        return VertexAIEmbeddings(model_name="textembedding-gecko@001")
     
     def __get_OpenAiModel(self):
         return OpenAIEmbeddings()

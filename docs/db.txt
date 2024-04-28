@@ -71,3 +71,13 @@ CREATE TABLE IF NOT EXISTS cy_source_types(
 insert into cy_source_types(id,name) values (1,'Oracle');
 insert into cy_source_types(id,name) values (2,'PostgreSQL');
 insert into cy_source_types(id,name) values (3,'OracleThin');
+
+# cy_speech_recognizer
+
+CREATE TABLE IF NOT EXISTS cy_speech_recognizer_types(
+    id smallint PRIMARY KEY,
+    name varchar(30) not null
+);
+
+insert into cy_speech_recognizer_types(id,name) values (1,'Whisper');
+insert into cy_speech_recognizer_types(id,name) values (2,'Google Cloud');

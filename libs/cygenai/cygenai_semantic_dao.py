@@ -492,3 +492,19 @@ class CyLangChunkDao():
         dbConn.connect()
         dbConn.execute_command_values(chunks)
         dbConn.disconnect()
+
+class CyLangSpeechRecognitionDao():
+    def __init__(self,env:CyLangEnv):
+        self.__env=env  
+
+    def get_types(self)->list:
+        ret=[]
+        sql="""select id,name from cy_speech_recognizer_types"""
+        dbConn=self.__env.get_semantic_db_connector()
+        dbConn.connect()
+        cur=dbConn.execute_query(sql)
+        rows=cur.fetchall()
+        for row in rows:
+            ret.append({'id':row[0],'name':row[1]})
+        dbConn.disconnect()
+        return ret

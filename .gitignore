@@ -4,6 +4,7 @@ cygenai.json
 logs/
 loads/
 certs/
+libs/tests/audio
 .vscode/
 *_gf*
 *.pyc
