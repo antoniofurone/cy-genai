@@ -5,6 +5,7 @@ logs/
 loads/
 certs/
 libs/tests/audio
+libs/tests/splitaudio
 .vscode/
 *_gf*
 *.pyc

@@ -910,4 +910,4 @@ def speech_recognize(app_name: Annotated[str, Header()],app_key: Annotated[str, 
     # delete file
     os.remove(file_path)    
 
-    return text_rcgn
+    return {"text_rcgn": text_rcgn}
