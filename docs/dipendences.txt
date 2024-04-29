@@ -49,5 +49,5 @@ pip install google-cloud-speech
 
 pip install pydub
 # necessita dell'installazione di ffmpeg
-pip install matplotlib
+pip install matplotl
 
