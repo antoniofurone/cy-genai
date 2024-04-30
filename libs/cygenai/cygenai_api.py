@@ -17,8 +17,9 @@ from cygenai_semantic import CySemanticDB
 from cygenai_semantic_data import CyLangContext,CyLangLLMData,CyLangContextType,CyLangSourceType,CyLangSource,CyLangHistory,CyLangApp
 from cygenai_llm import CyLangLLM,CyLangLLMType
 from cygenai_speech_recognition import CyLangSpeechRecognition,CyLangSpeechRecognizerType
+from cygenai_summ import CyLangLSumm
 from embeddings import CyEmbeddingsModel
-from document_loaders import CyDocumentLoaderType
+from document_loaders import CyDocumentLoaderType,CyDocumentLoader
 from cygenai_utils import xor,clean_query,format_cursor,lista_a_json
 from cryptography.fernet import Fernet
 
@@ -779,12 +780,6 @@ def remove_file(app_name: Annotated[str, Header()],app_key: Annotated[str, Heade
     return path
 
 
-class CyDocumentLoaderType(Enum):
-    PDF=1
-    FILE_DIRECTORY=2
-    CSV=3
-    HTML=4
-
 @app.get("/load-types")
 def get_load_types(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()]):
     env=g_data['env'] 
@@ -911,3 +906,65 @@ def speech_recognize(app_name: Annotated[str, Header()],app_key: Annotated[str, 
     os.remove(file_path)    
 
     return {"text_rcgn": text_rcgn}
+
+class Doc(BaseModel):
+    doc_path:str
+    load_type:CyDocumentLoaderType
+    
+class Summ(BaseModel):
+    context_id:int
+    llm_name:str
+    summ_type:CyLangLLMType
+    docs:list[Doc]   
+
+@app.post("/summ/",status_code=status.HTTP_200_OK)
+def summ_docs(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],summ: Summ):
+    env=g_data['env'] 
+    semanticDB=CySemanticDB(env)
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+    
+    if semanticDB.get_context_by_id(summ.context_id) is None:
+       raise HTTPException(status_code=404, detail="Context not found")     
+    
+    load_root_folder=env.get_config().get_load_config()['root_folder']
+    if load_root_folder is None:
+        raise HTTPException(status_code=404, detail="You shoud configure load root_folder")
+    
+    ctx_folder=load_root_folder+"/ctx_"+str(summ.context_id)
+    if not os.path.exists(ctx_folder):
+         raise HTTPException(status_code=404, detail="Context folder not found")
+    
+    if summ.llm_name is None:
+       summ.llm_name="default"
+
+    llm_conf=semanticDB.get_llm(context_id=summ.context_id,name=summ.llm_name)
+    if llm_conf is None:
+        raise HTTPException(status_code=404, detail="LLM not found")    
+
+    llm_sum=CyLangLSumm(CyLangLLMType(llm_conf.llm_type_id),model_name=llm_conf.model_name,temperature=llm_conf.temperature,
+                            template=llm_conf.prompt_template) 
+    docs=None
+    
+    for doc in summ.docs:
+        
+        if doc.load_type==CyDocumentLoaderType.WEB:
+            doc_path=doc.doc_path 
+        else:         
+            doc_path=ctx_folder+'/'+doc.doc_path
+        logging.info("doc_path:"+doc_path)
+        
+        loader=CyDocumentLoader(doc.load_type,doc_path)
+        if docs is None:
+            docs=loader.load()
+        else:
+            docs.extend(loader.load())    
+
+    res=llm_sum.invoke(docs)
+
+    if res is None:
+        res="There are some problems"
+    else:
+        res=res['output_text'] 
+
+    return res

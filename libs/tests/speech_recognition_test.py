@@ -23,7 +23,7 @@ data = {}
 data_json = json.dumps(data)
 
 file_out=open("vajont.txt", "w") 
-file_to_elab=1
+file_to_elab=4
 file_count=0
 
 while start < len(audio):
