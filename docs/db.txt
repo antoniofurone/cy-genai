@@ -83,13 +83,3 @@ CREATE TABLE IF NOT EXISTS cy_speech_recognizer_types(
 
 insert into cy_speech_recognizer_types(id,name) values (1,'Whisper');
 insert into cy_speech_recognizer_types(id,name) values (2,'Google Cloud');
-
-# cy_summ_types
-
-CREATE TABLE IF NOT EXISTS cy_summ_types(
-    id smallint PRIMARY KEY,
-    name varchar(30) not null
-);
-
-insert into cy_summ_types(id,name) values (1,'Chat Open AI');
-insert into cy_summ_types(id,name) values (2,'Google Vertex AI');

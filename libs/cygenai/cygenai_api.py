@@ -914,7 +914,6 @@ class Doc(BaseModel):
 class Summ(BaseModel):
     context_id:int
     llm_name:str
-    summ_type:CyLangLLMType
     docs:list[Doc]   
 
 @app.post("/summ/",status_code=status.HTTP_200_OK)
