@@ -14,7 +14,8 @@ from tabulate import tabulate
 
 from cygenai_env import CyLangEnv
 from cygenai_semantic import CySemanticDB
-from cygenai_semantic_data import CyLangContext,CyLangLLMData,CyLangContextType,CyLangSourceType,CyLangSource,CyLangHistory,CyLangApp
+from cygenai_semantic_data import CyLangContext,CyLangLLMData,CyLangContextType,CyLangSourceType,CyLangSource,\
+    CyLangHistory,CyLangApp,CyLangChunk
 from cygenai_llm import CyLangLLM,CyLangLLMType
 from cygenai_speech_recognition import CyLangSpeechRecognition,CyLangSpeechRecognizerType
 from cygenai_summ import CyLangLSumm
@@ -425,6 +426,7 @@ class Query(BaseModel):
     context_id:int
     session_id:str=Field(default=None, title="Session-id used for history")
     llm_name:str =Field(default=None, title="Name of LLM")
+    context:str=Field(default=None, title="Context")
     source_name:str =Field(default=None, title="Name of Source")
     askdata_output_fmt:str =Field(default=None, title="Formato in output per askdata")
 
@@ -480,12 +482,16 @@ def llm_query(app_name: Annotated[str, Header()],app_key: Annotated[str, Header(
     logging.debug("llm_local="+str(llm.local))
     logging.debug("llm_ppt_pipeline="+str(llm.pt_pipeline))
 
-
+    chunks=[]
     if llm.llm_type==CyLangLLMType.HUGGING_FACE and \
         (llm.task=='text-classification' or llm.task=='sentiment-analysis' or llm.task=='text-generation' or llm.task=='text2text-generation'):
-        chunks=[]
+        pass
     else:
-        chunks=semanticDB.similarity_search(ctx,query_search)
+        if not query.context:
+            if llm.use_context:
+                chunks=semanticDB.similarity_search(ctx,query_search)
+        else:
+            chunks=[CyLangChunk(content=query.context,metadata={'source':'api'})] 
    
     res = llm.invoke(contexts=chunks,query=query.query,hasHistory=ctx.history,history=history)
     if res is None:

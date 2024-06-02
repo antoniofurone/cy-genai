@@ -1,0 +1,15 @@
+login
+context -> llm -> test (chat)
+context -> surce
+context -> loads
+
+
+npx create-next-app@latest
+npm install clsx
+npm install @heroicons/react
+npm install next-auth@beta
+"C:\Program Files\Git\usr\bin\openssl" rand -base64 32
+npm i zod
+npm i bcrypt
+npm i --save-dev @types/bcrypt
+npm i js-cookie

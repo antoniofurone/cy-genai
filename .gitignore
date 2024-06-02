@@ -10,6 +10,7 @@ libs/tests/splitaudio
 *_gf*
 *.pyc
 *__pycache__*
+gui/cy-genai-ui/.env
 
 
 

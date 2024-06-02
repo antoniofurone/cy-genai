@@ -108,7 +108,11 @@ Answer: """
                     self.llm.temperature=self.temperature    
         else:
             self.llm=llm  
-            self.pt_pipeline=False     
+            self.pt_pipeline=False   
+
+        self.use_context=False
+        if '{context}' in self.template:
+            self.use_context=True      
 
     def invoke(self,contexts:list[CyLangChunk], query:str, addition:str=None,
                hasHistory:bool=False,history:list[CyLangHistory]=None)->dict:
@@ -147,11 +151,15 @@ Answer: """
     
     def __invoke_chain(self,context:str,query:str,hasHistory:bool=False,history:list[CyLangHistory]=None):
         
-        if hasHistory:
-            prompt = PromptTemplate(input_variables=["context","question","history"],template=self.template)
-        else:    
-            prompt = PromptTemplate(input_variables=["context","question"],template=self.template)
+        input_variables=[]
         
+        if self.use_context:
+            input_variables.append("context")
+        input_variables.append("question")
+        if hasHistory:
+            input_variables.append("history")   
+
+        prompt = PromptTemplate(input_variables=input_variables,template=self.template)
         llm_chain = LLMChain(prompt=prompt, llm=self.llm)
 
         logging.debug("-------------------- __invoke_chain: INIZIO LOGGING PARAMETRI LLM ---------------------")
@@ -166,18 +174,15 @@ Answer: """
                 for hist in history:
                     hists.append([HumanMessage(content=hist.query),AIMessage(content=hist.answer)])
                 
-            return llm_chain.invoke(
-            {
-                "context": context,
-                "question": query,
-                "history": hists
-            }) 
+            if self.use_context:
+                return llm_chain.invoke({"context": context,"question": query,"history": hists})
+            else:
+                return llm_chain.invoke({"question": query,"history": hists})
         else:
-            return llm_chain.invoke(
-            {
-                "context": context,
-                "question": query
-            })     
+            if self.use_context:
+                return llm_chain.invoke({"context": context,"question": query}) 
+            else:
+                return llm_chain.invoke({"question": query})        
 
     def __invoke_pipeline(self,context:str,query:str):
        
