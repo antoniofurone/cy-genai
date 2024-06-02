@@ -21,3 +21,13 @@ export async function authenticate(_currentState: unknown, formData: FormData) {
     throw error
   }
 }
+
+export async function deleteContext(id: number) {
+  try {
+    // await sql`DELETE FROM invoices WHERE id = ${id}`;
+    // revalidatePath('/dashboard/invoices');
+    return { message: 'Deleted Context.' };
+  } catch (error) {
+    return { message: 'Database Error: Failed to Delete Context.' };
+  }    
+}

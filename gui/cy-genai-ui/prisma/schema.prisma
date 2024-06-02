@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model cy_app {
+  name    String  @id @db.VarChar(30)
+  app_key String  @db.VarChar(50)
+  owner   Int
+  cy_user cy_user @relation(fields: [owner], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_app_owner")
+}
+
+model cy_chunk {
+  id        Int                    @id @default(autoincrement())
+  load_id   Int?
+  content   String?
+  metadata  String?
+  embedding Unsupported("vector")?
+  cy_load   cy_load?               @relation(fields: [load_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_chunk_load_id")
+
+  @@index([embedding])
+}
+
+model cy_context {
+  id               Int              @id @default(autoincrement())
+  context_name     String           @unique @db.VarChar(20)
+  chunk_size       Int
+  chunk_overlap    Int
+  context_size     Int
+  chunk_threshold  Float
+  load_threshold   Float
+  chunk_weight     Float
+  load_weight      Float
+  embedding_model  Int              @db.SmallInt
+  context_type     Int              @db.SmallInt
+  history          Boolean          @default(false)
+  cy_embs_types    cy_embs_types    @relation(fields: [embedding_model], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_ctx_embs_model")
+  cy_context_types cy_context_types @relation(fields: [context_type], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_ctx_type")
+  cy_history       cy_history[]     @ignore
+  cy_llm           cy_llm[]
+  cy_load          cy_load[]
+  cy_source        cy_source[]
+}
+
+model cy_context_types {
+  id         Int          @id @db.SmallInt
+  name       String       @db.VarChar(30)
+  cy_context cy_context[]
+}
+
+model cy_embs_types {
+  id         Int          @id @db.SmallInt
+  name       String       @db.VarChar(30)
+  cy_context cy_context[]
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model cy_history {
+  context_id Int
+  session_id String     @db.Char(36)
+  query      String
+  answer     String
+  time_stamp DateTime   @default(now()) @db.Timestamp(6)
+  cy_context cy_context @relation(fields: [context_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_hist_context_id")
+
+  @@ignore
+}
+
+model cy_llm {
+  context_id   Int
+  name         String       @db.VarChar(20)
+  llm_type     Int
+  model_name   String?      @db.VarChar(50)
+  temperature  Float?
+  template     String?
+  model_args   String?      @db.VarChar(100)
+  task         String?      @db.VarChar(50)
+  local        Boolean      @default(false)
+  pt_pipeline  Boolean      @default(false)
+  cy_context   cy_context   @relation(fields: [context_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_llm_context_id")
+  cy_llm_types cy_llm_types @relation(fields: [llm_type], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_llm_type")
+
+  @@id([context_id, name])
+}
+
+model cy_llm_types {
+  id     Int      @id @db.SmallInt
+  name   String   @db.VarChar(30)
+  cy_llm cy_llm[]
+}
+
+model cy_load {
+  id            Int                    @id @default(autoincrement())
+  context_id    Int?
+  load_name     String                 @unique @db.VarChar(30)
+  content       String?
+  status        String                 @db.VarChar(30)
+  path          String                 @db.VarChar(200)
+  load_type     Int
+  embedding     Unsupported("vector")?
+  cy_chunk      cy_chunk[]
+  cy_context    cy_context?            @relation(fields: [context_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_load_context_id")
+  cy_load_types cy_load_types          @relation(fields: [load_type], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_load_type")
+  cy_load_trace cy_load_trace[]        @ignore
+
+  @@index([embedding])
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model cy_load_trace {
+  load_id    Int
+  time_stamp DateTime @db.Timestamp(6)
+  step       String   @db.VarChar(200)
+  cy_load    cy_load  @relation(fields: [load_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_load_trace_load_id")
+
+  @@ignore
+}
+
+model cy_load_types {
+  id      Int       @id @db.SmallInt
+  name    String    @db.VarChar(30)
+  cy_load cy_load[]
+}
+
+model cy_source {
+  context_id      Int
+  name            String          @db.VarChar(20)
+  type_id         Int             @db.SmallInt
+  userid          String          @db.VarChar(20)
+  pwd             String          @db.VarChar(100)
+  host            String          @db.VarChar(20)
+  port            Int
+  service_name    String?         @db.VarChar(30)
+  database        String?         @db.VarChar(30)
+  cy_context      cy_context      @relation(fields: [context_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_source_context_id")
+  cy_source_types cy_source_types @relation(fields: [type_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_source_type")
+
+  @@id([context_id, name])
+}
+
+model cy_source_types {
+  id        Int         @id @db.SmallInt
+  name      String      @db.VarChar(30)
+  cy_source cy_source[]
+}
+
+model cy_speech_recognizer_types {
+  id   Int    @id @db.SmallInt
+  name String @db.VarChar(30)
+}
+
+model cy_user {
+  id      Int      @id @default(autoincrement())
+  email   String   @unique @db.VarChar(50)
+  pwd     String   @db.VarChar(100)
+  name    String   @db.VarChar(50)
+  surname String   @db.VarChar(50)
+  cy_app  cy_app[]
+}
