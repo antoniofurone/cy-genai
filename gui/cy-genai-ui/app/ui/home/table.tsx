@@ -17,6 +17,7 @@ export default async function InvoicesTable({
     <div className="mt-6 flow-root">
       <div className="inline-block min-w-full align-middle">
         <div className="rounded-lg bg-gray-50 p-2 md:pt-0">
+          
           <div className="md:hidden">
             {contexts?.map((ctx) => (
               <div
@@ -76,6 +77,27 @@ export default async function InvoicesTable({
                 <th scope="col" className="px-3 py-5 font-medium">
                   Context Size
                 </th>
+                <th scope="col" className="px-3 py-5 font-medium">
+                  Chunk Threshold
+                </th>
+                <th scope="col" className="px-3 py-5 font-medium">
+                  Load Threshold
+                </th>
+                <th scope="col" className="px-3 py-5 font-medium">
+                  Chunk Weight
+                </th>
+                <th scope="col" className="px-3 py-5 font-medium">
+                  Load Weight
+                </th>
+                <th scope="col" className="px-3 py-5 font-medium">
+                  Embedding Model
+                </th>
+                <th scope="col" className="px-3 py-5 font-medium">
+                  Context Type
+                </th>
+                <th scope="col" className="px-3 py-5 font-medium">
+                  History
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white">
@@ -102,6 +124,41 @@ export default async function InvoicesTable({
                   <td className="whitespace-nowrap py-3 pl-6 pr-3">
                     <div className="flex items-center gap-3">
                       <p>{ctx.context_size}</p>
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap py-3 pl-6 pr-3">
+                    <div className="flex items-center gap-3">
+                      <p>{ctx.chunk_threshold}</p>
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap py-3 pl-6 pr-3">
+                    <div className="flex items-center gap-3">
+                      <p>{ctx.load_threshold}</p>
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap py-3 pl-6 pr-3">
+                    <div className="flex items-center gap-3">
+                      <p>{ctx.chunk_weight}</p>
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap py-3 pl-6 pr-3">
+                    <div className="flex items-center gap-3">
+                      <p>{ctx.load_weight}</p>
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap py-3 pl-6 pr-3">
+                    <div className="flex items-center gap-3">
+                      <p>{ctx.cy_embs_types.name}</p>
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap py-3 pl-6 pr-3">
+                    <div className="flex items-center gap-3">
+                      <p>{ctx.cy_context_types.name}</p>
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap py-3 pl-6 pr-3">
+                    <div className="flex items-center gap-3">
+                      <p>{ctx.history?'true':'false'}</p>
                     </div>
                   </td>
                   <td className="whitespace-nowrap py-3 pl-6 pr-3">

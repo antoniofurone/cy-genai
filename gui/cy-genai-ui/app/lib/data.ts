@@ -39,6 +39,7 @@ export async function fetchFilteredContexts(
           }
         
         },
+        include:{cy_embs_types:true,cy_context_types:true},
         orderBy: {id: 'asc'},
         skip:offset, take:ITEMS_PER_PAGE
  
@@ -52,6 +53,29 @@ export async function fetchFilteredContexts(
   }
 }
 
+export async function fetchEmbeddingTypes() 
+{
+  try { 
+    const embTypes=prisma.cy_embs_types.findMany();
+    return embTypes;
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch embedding types.');
+  }
+
+}
+
+export async function fetchContextTypes() 
+{
+  try { 
+    const embTypes=prisma.cy_context_types.findMany();
+    return embTypes;
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch context types.');
+  }
+
+}
 
 /*
 import { sql } from '@vercel/postgres';

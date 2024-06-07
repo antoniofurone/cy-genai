@@ -163,7 +163,7 @@ class CySemanticDB:
         return CyLangLoadDao(self.__env).get_types()
  
     
-    def similarity_search(self,context:CyLangContext,query:str)->list[CyLangChunk]:
+    def similarity_search(self,context:CyLangContext,query:str,loads:list[str]=None)->list[CyLangChunk]:
         ret=[]
         
         embs_config=None
@@ -173,27 +173,45 @@ class CySemanticDB:
         embs=CyEmbeddings(model=CyEmbeddingsModel(context.embeddings_model_id),config=embs_config).embed_query(query)
         embs_padded=_pad0(embs,self.__env.get_config().get_embeddings_config()['tableFieldSize'])
 
+        loads_in:str=None
+        if loads and len(loads)>0:
+           loads_in=','.join("'"+x+"'" for x in loads)
 
-        #query @ chunks (20240207 modificato load_id in id nella query su cy_load)
-        sql1=f"""select id,load_id,content,metadata,1-(embedding <=> '{embs_padded}') as similarity 
-            from cy_chunk 
-            where load_id in (select id from cy_load where context_id={context.id})
-            and 1-(embedding <=> '{embs_padded}')>{context.chunk_threshold}
-            order by similarity desc
-            """
-        
+        if loads_in:
+            sql1=f"""select id,load_id,content,metadata,1-(embedding <=> '{embs_padded}') as similarity 
+                from cy_chunk 
+                where load_id in (select id from cy_load where context_id={context.id} and load_name in ({loads_in}))
+                and 1-(embedding <=> '{embs_padded}')>{context.chunk_threshold}
+                order by similarity desc
+                """
+        else:
+            sql1=f"""select id,load_id,content,metadata,1-(embedding <=> '{embs_padded}') as similarity 
+                from cy_chunk 
+                where load_id in (select id from cy_load where context_id={context.id})
+                and 1-(embedding <=> '{embs_padded}')>{context.chunk_threshold}
+                order by similarity desc
+                """
+
+            
         thr1 = ThreadAdapter(target=exec_chunk_similarity, args=(self.__env,sql1))
         thr1.start()
         
-        
-        #query @ loads
-        sql2=f"""select id,1-(embedding <=> '{embs_padded}') as similarity 
-            from cy_load 
-            where context_id={context.id}
-            and 1-(embedding <=> '{embs_padded}')>{context.load_threshold}
-            order by similarity desc
-            """
-        
+        if loads_in:
+            #query @ loads
+            sql2=f"""select id,1-(embedding <=> '{embs_padded}') as similarity 
+                from cy_load 
+                where context_id={context.id} and load_name in ({loads_in})
+                and 1-(embedding <=> '{embs_padded}')>{context.load_threshold}
+                order by similarity desc
+                """
+        else:
+            sql2=f"""select id,1-(embedding <=> '{embs_padded}') as similarity 
+                from cy_load 
+                where context_id={context.id}
+                and 1-(embedding <=> '{embs_padded}')>{context.load_threshold}
+                order by similarity desc
+                """    
+            
         thr2 = ThreadAdapter(target=exec_load_similarity, args=(self.__env,sql2))
         thr2.start()
         

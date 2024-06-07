@@ -21,7 +21,7 @@ from cygenai_speech_recognition import CyLangSpeechRecognition,CyLangSpeechRecog
 from cygenai_summ import CyLangLSumm
 from embeddings import CyEmbeddingsModel
 from document_loaders import CyDocumentLoaderType,CyDocumentLoader
-from cygenai_utils import xor,clean_query,format_cursor,lista_a_json
+from cygenai_utils import xor,clean_query,format_cursor,lista_a_json,ThreadAdapter
 from cryptography.fernet import Fernet
 
 from db import CyLangDBFactory,CyDBAdapterEnum
@@ -427,6 +427,7 @@ class Query(BaseModel):
     session_id:str=Field(default=None, title="Session-id used for history")
     llm_name:str =Field(default=None, title="Name of LLM")
     context:str=Field(default=None, title="Context")
+    loads:list[str]=Field(default=None, title="List of load names")
     source_name:str =Field(default=None, title="Name of Source")
     askdata_output_fmt:str =Field(default=None, title="Formato in output per askdata")
 
@@ -489,7 +490,7 @@ def llm_query(app_name: Annotated[str, Header()],app_key: Annotated[str, Header(
     else:
         if not query.context:
             if llm.use_context:
-                chunks=semanticDB.similarity_search(ctx,query_search)
+                chunks=semanticDB.similarity_search(ctx,query_search,query.loads)
         else:
             chunks=[CyLangChunk(content=query.context,metadata={'source':'api'})] 
    
@@ -973,3 +974,52 @@ def summ_docs(app_name: Annotated[str, Header()],app_key: Annotated[str, Header(
         res=res['output_text'] 
 
     return res
+
+class Extension(BaseModel):
+    context_id:int
+    path:str
+    param:dict=None
+    is_async:bool=False
+
+
+@app.post("/run-extension/",status_code=status.HTTP_200_OK)
+def run_extension(app_name: Annotated[str, Header()],app_key: Annotated[str, Header()],extension:Extension):
+    env=g_data['env'] 
+    semanticDB=CySemanticDB(env)
+    if not semanticDB.check_app_key(apps=g_data['apps'],app_name=app_name,app_key=app_key):
+        raise HTTPException(status_code=403, detail="Access denied")  
+
+    if semanticDB.get_context_by_id(extension.context_id) is None:
+       raise HTTPException(status_code=404, detail="Context not found")     
+
+    load_root_folder=env.get_config().get_load_config()['root_folder']
+    if load_root_folder is None:
+        raise HTTPException(status_code=404, detail="You shoud configure load root_folder")
+
+    ctx_folder=load_root_folder+"/ctx_"+str(extension.context_id)
+    if not os.path.exists(ctx_folder):
+         raise HTTPException(status_code=404, detail="Context folder not found")
+
+    extension_path=ctx_folder+'/'+extension.path
+    logging.info("extension_path:"+extension_path)
+
+    import importlib.util
+    import sys
+    spec=importlib.util.spec_from_file_location("module.name",extension_path)
+
+    ext=importlib.util.module_from_spec(spec)
+    sys.modules["module.nane"]=ext
+    spec.loader.exec_module(ext)
+    extesion_obj=ext.CyLangExtention()
+
+    if extension.is_async:
+        thr=ThreadAdapter(target=invoke_extension, args=(extesion_obj,extension.param))
+        thr.start()
+        return extension
+    else:    
+        return extesion_obj.execute(extension.param)
+
+def invoke_extension(object,param:dict):
+    logging.info("start run extension....")
+    object.execute(param)
+    logging.info("stop run extension....")
