@@ -1,20 +1,38 @@
-import Link from 'next/link';
+'use client';
+
+import { updateContext } from '@/app/lib/actions';
 import {
   CheckIcon,
-  XMarkIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
+import Link from 'next/link';
 import { Button } from '@/app/ui/button';
 
-import { createContext } from '@/app/lib/actions';
-
-export default function Form({ embTypes,contextTypes }: { 
+export default function EditInvoiceForm
+  ({ embTypes,contextTypes,context }: { 
     embTypes: {id: number;name: string;}[],
-    contextTypes: {id: number;name: string;}[]
-  }) {
+    contextTypes: {id: number;name: string;}[],
+    context:{id:number,
+      context_name:string,
+      chunk_size:number,
+      chunk_overlap:number,
+      context_size:number,
+      chunk_threshold:number,
+      load_threshold:number,
+      chunk_weight:number,
+      load_weight:number,
+      embedding_model:number,
+      context_type:number,
+      history:boolean
+    }
+  })
+ {
+  const updateContextWithId = updateContext.bind(null, context.id);
+
   return (
-    <form action={createContext}>
+    <form action={updateContextWithId}>
       <div className="rounded-md bg-gray-50 p-4 md:p-6">
-       
+        
         {/* Context Name */}
         <div className="mb-4">
           <label htmlFor="name" className="mb-2 block text-sm font-medium">
@@ -27,6 +45,7 @@ export default function Form({ embTypes,contextTypes }: {
                 name="name"
                 type="string"
                 placeholder="Enter name of context"
+                defaultValue={context.context_name}
                 className="peer block w-full rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"
                 required
               />
@@ -48,6 +67,7 @@ export default function Form({ embTypes,contextTypes }: {
                 type="number"
                 step="1"
                 placeholder="Enter chunk size of context"
+                defaultValue={context.chunk_size}
                 className="peer block w-full rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"
                 required
               />
@@ -56,8 +76,8 @@ export default function Form({ embTypes,contextTypes }: {
           </div>
         </div>
 
-        {/* Chunch Overlap */}
-        <div className="mb-4">
+       {/* Chunch Overlap */}
+       <div className="mb-4">
           <label htmlFor="chunk_overlap" className="mb-2 block text-sm font-medium">
             Choose a chunk overlap 
           </label>
@@ -67,6 +87,7 @@ export default function Form({ embTypes,contextTypes }: {
                 id="chunk_overlap"
                 name="chunk_overlap"
                 type="number"
+                defaultValue={context.chunk_overlap}
                 step="1"
                 placeholder="Enter chunk overlap of context"
                 className="peer block w-full rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"
@@ -88,6 +109,7 @@ export default function Form({ embTypes,contextTypes }: {
                 id="context_size"
                 name="context_size"
                 type="number"
+                defaultValue={context.context_size}
                 step="1"
                 placeholder="Enter number of chunk used to build context"
                 className="peer block w-full rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"
@@ -98,8 +120,8 @@ export default function Form({ embTypes,contextTypes }: {
           </div>
         </div>
 
-        {/* Chunk Threshold */}
-        <div className="mb-4">
+         {/* Chunk Threshold */}
+         <div className="mb-4">
           <label htmlFor="chunk_threshold" className="mb-2 block text-sm font-medium">
             Choose a chunk threshold 
           </label>
@@ -109,6 +131,7 @@ export default function Form({ embTypes,contextTypes }: {
                 id="chunk_threshold"
                 name="chunk_threshold"
                 type="number"
+                defaultValue={context.chunk_threshold}
                 step="0.01"
                 placeholder="Enter chunk threshold for similarity"
                 className="peer block w-full rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"
@@ -130,6 +153,7 @@ export default function Form({ embTypes,contextTypes }: {
                 id="load_threshold"
                 name="load_threshold"
                 type="number"
+                defaultValue={context.load_threshold}
                 step="0.01"
                 placeholder="Enter load threshold for similarity"
                 className="peer block w-full rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"
@@ -151,6 +175,7 @@ export default function Form({ embTypes,contextTypes }: {
                 id="chunk_weight"
                 name="chunk_weight"
                 type="number"
+                defaultValue={context.chunk_weight}
                 step="0.01"
                 placeholder="Enter chunk weight for similarity"
                 className="peer block w-full rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"
@@ -172,6 +197,7 @@ export default function Form({ embTypes,contextTypes }: {
                 id="load_weight"
                 name="load_weight"
                 type="number"
+                defaultValue={context.load_weight}
                 step="0.01"
                 placeholder="Enter load weight for similarity"
                 className="peer block w-full rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"
@@ -182,8 +208,8 @@ export default function Form({ embTypes,contextTypes }: {
           </div>
         </div>
 
-        {/* Embedding Model */}
-        <div className="mb-4">
+         {/* Embedding Model */}
+         <div className="mb-4">
           <label htmlFor="embedding_model" className="mb-2 block text-sm font-medium">
             Embedding Model
           </label>
@@ -192,7 +218,7 @@ export default function Form({ embTypes,contextTypes }: {
               id="embedding_model"
               name="embedding_model"
               className="peer block w-full cursor-pointer rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"
-              defaultValue=""
+              defaultValue={context.embedding_model}
               required
             >
               <option value="" disabled>
@@ -218,7 +244,7 @@ export default function Form({ embTypes,contextTypes }: {
               id="context_type"
               name="context_type"
               className="peer block w-full cursor-pointer rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"
-              defaultValue=""
+              defaultValue={context.context_type}
               required
             >
               <option value="" disabled>
@@ -234,7 +260,6 @@ export default function Form({ embTypes,contextTypes }: {
           </div>
         </div>
 
-
         {/* History */}
         <fieldset>
           <legend className="mb-2 block text-sm font-medium">
@@ -248,7 +273,7 @@ export default function Form({ embTypes,contextTypes }: {
                   name="history"
                   type="radio"
                   value="false" 
-                  defaultChecked
+                  defaultChecked={context.history==false?true:false}
                   className="h-4 w-4 cursor-pointer border-gray-300 bg-gray-100 text-gray-600 focus:ring-2"
                 />
                 <label
@@ -264,6 +289,7 @@ export default function Form({ embTypes,contextTypes }: {
                   name="history"
                   type="radio"
                   value="true"
+                  defaultChecked={context.history==true?true:false}
                   className="h-4 w-4 cursor-pointer border-gray-300 bg-gray-100 text-gray-600 focus:ring-2"
                 />
                 <label
@@ -276,15 +302,19 @@ export default function Form({ embTypes,contextTypes }: {
             </div>
           </div>
         </fieldset>
-      </div>
 
+
+
+      </div>
+             
       <div className="mt-6 flex justify-end gap-4">
         <Link
           href="/home"
-          className="flex h-10 items-center rounded-lg bg-gray-100 px-4 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-200">
+          className="flex h-10 items-center rounded-lg bg-gray-100 px-4 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-200"
+        >
           Cancel
         </Link>
-        <Button type="submit">Create Context</Button>
+        <Button type="submit">Edit Context</Button>
       </div>
     </form>
   );

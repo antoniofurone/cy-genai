@@ -1,7 +1,9 @@
 'use server'
  
 import { signIn } from '@/auth'
-
+import { _createContext, _deleteContext,_updateContext } from './data'
+import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
  
 export async function authenticate(_currentState: unknown, formData: FormData) {
   try {
@@ -24,40 +26,35 @@ export async function authenticate(_currentState: unknown, formData: FormData) {
 
 export async function deleteContext(id: number) {
   try {
-    // await sql`DELETE FROM invoices WHERE id = ${id}`;
-    // revalidatePath('/dashboard/invoices');
-    return { message: 'Deleted Context.' };
+    console.log('id:'+id)
+    _deleteContext(id)
+
+    revalidatePath('/home');
+    redirect('/home');
+
   } catch (error) {
     return { message: 'Database Error: Failed to Delete Context.' };
   }    
 }
 
+ 
+
 export async function createContext(formData: FormData) {
-  /*
-  const { customerId, amount, status } = CreateInvoice.parse({
-      customerId: formData.get('customerId'),
-      amount: formData.get('amount'),
-      status: formData.get('status'),
-    });
-   
-  const amountInCents = amount * 100;  
-  const date = new Date().toISOString().split('T')[0];
+
+  _createContext(formData)
   
-  try {
-    await sql`
-    INSERT INTO invoices (customer_id, amount, status, date)
-    VALUES (${customerId}, ${amountInCents}, ${status}, ${date})`;
-  } catch (error) {
-  return {
-    message: 'Database Error: Failed to Create Invoice.',
-  };
+  revalidatePath('/home');
+  redirect('/home');
+  
 }
 
+export async function updateContext(id: number, formData: FormData) {
 
-  revalidatePath('/dashboard/invoices');
-  redirect('/dashboard/invoices');
+  _updateContext(id,formData)
+  
+  revalidatePath('/home');
+  redirect('/home');
+  
 
-  // Test it out:
-  //console.log(rawFormData);
-  */
+
 }

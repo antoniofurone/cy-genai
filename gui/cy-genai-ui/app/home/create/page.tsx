@@ -19,7 +19,12 @@ export default async function Page() {
           },
         ]}
       />
-      <Form embTypes={embTypes} />
+      <Form embTypes={embTypes} contextTypes={contextTypes} />
     </main>
   );
+}
+
+export const metadata = {
+  title: "CyGenAI UI",
+  description: "CyGenAI User Interface",
 }
