@@ -51,3 +51,9 @@ pip install pydub
 # necessita dell'installazione di ffmpeg
 pip install matplotl
 
+
+>>>>>>>>> df pandas agent <<<<<<<<<<<<<<<<
+pip install pandas
+langchain_experimental
+
+

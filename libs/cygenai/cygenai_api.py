@@ -885,22 +885,45 @@ def speech_recognize(app_name: Annotated[str, Header()],app_key: Annotated[str, 
     if load_root_folder is None:
         raise HTTPException(status_code=404, detail="You shoud configure load root_folder")
 
-    file_path=load_root_folder+"/ctx_"+str(context_id)
-    if not os.path.exists(file_path):
-        os.makedirs(file_path)
+    folder_path_file=load_root_folder+"/ctx_"+str(context_id)
+    if not os.path.exists(folder_path_file):
+        os.makedirs(folder_path_file)    
 
     if folderPath is not None:
-        file_path=file_path+'/'+folderPath
-    file_path=file_path+'/'+file.filename    
+        folder_path_file=folder_path_file+'/'+folderPath
+    
+    file_path=folder_path_file+'/'+file.filename    
    
     try:
         with open(file_path, 'wb') as f:
             shutil.copyfileobj(file.file, f)
+
+            
+        file.file.close()    
+
+        # check file type
+        import filetype
+        kind_of_file = filetype.guess(file_path)
+        print(kind_of_file.mime)
+        if kind_of_file is None or kind_of_file.mime is None or \
+           (kind_of_file.mime!="audio/mpeg" and kind_of_file.mime!="audio/x-wav"):
+            os.remove(file_path)    
+            raise Exception("File format not supported")   
+
+        if  kind_of_file.mime=="audio/mpeg":
+            #converto il file in wav se si tratta di mp3
+            from pydub import AudioSegment
+            new_file_path=file_path+".wav"
+            AudioSegment.from_mp3(file_path).export(new_file_path, format="wav")
+            os.remove(file_path)
+            file_path=new_file_path    
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="There was an error in uploading file: "+str(e)) 
     
-    except Exception:
-        raise HTTPException(status_code=500, detail="There was an error uploading the file")  
     finally:
-        file.file.close()
+        if not file.file.closed:
+             file.file.close()
 
     # recognize
     text_rcgn=""

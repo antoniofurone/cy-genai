@@ -1,0 +1,11 @@
+# image build
+docker build .  
+docker image build -t cygenai -f ./Dockerfile .
+
+# image run
+docker run cygenai
+# run specifing name and image
+docker run --name cygenai cygenai
+docker run --name cygenai -v "c:\\cy-genai\\vol1":/cy-genai/cy-vo1 cygenai bash
+# interactive mode
+docker run -it --name cygenai -v "c:\\cy-genai\\vol1":/cy-genai/cy-vo1 cygenai bash

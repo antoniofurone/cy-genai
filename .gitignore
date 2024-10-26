@@ -1,6 +1,7 @@
 docs/env*
 cyorg-genai-test-f703c8bc0505.json
 cygenai.json
+cygenai-docker.json
 logs/
 loads/
 certs/
