@@ -1,6 +1,6 @@
 # image build
 docker build .  
-docker image build -t cygenai -f ./Dockerfile .
+docker image build -t cygenai -f ./Dockerfile-cygenai .
 
 # image run
 docker run cygenai
@@ -8,4 +8,9 @@ docker run cygenai
 docker run --name cygenai cygenai
 docker run --name cygenai -v "c:\\cy-genai\\vol1":/cy-genai/cy-vo1 cygenai bash
 # interactive mode
-docker run -it --name cygenai -v "c:\\cy-genai\\vol1":/cy-genai/cy-vo1 cygenai bash
+docker run -it --name cygenai -v "c:\\Temp\\cy-genai\\vol1":/cy-genai/cy-vol1 cygenai bash
+
+docker run --name cygenai -v "c:\\Temp\\cy-genai\\vol1":/cy-genai/cy-vol1 cygenai --bind 127.0.0.1 -p 8000:8000
+
+# remove container
+docker rm cygenai

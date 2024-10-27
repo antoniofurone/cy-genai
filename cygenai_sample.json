@@ -44,8 +44,8 @@
     "security":
         {
             "encryption_key": "LBYsjUQfC45hNG6HHLKbdm8d2foZ49ua6hjinziUcZ4=",
-            "cert_file":"C:/Users/User/VSProjects/sparklelang-ai/certs/cert.pem",
-            "key_file":"C:/Users/User/VSProjects/sparklelang-ai/certs/key.pem"
+            "cert_file":"C:/Users/User/VSProjects/cy-genai/certs/cert.pem",
+            "key_file":"C:/Users/User/VSProjects/cy-genai/certs/key.pem"
         },    
     "chatbot":
         {

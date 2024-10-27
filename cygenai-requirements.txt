@@ -1,0 +1,38 @@
+tabulate
+langchain-google-vertexai==0.0.3
+langchain-openai
+langchain 
+psycopg2-binary
+pypdf
+unstructured
+cx-Oracle
+oracledb
+fastapi
+uvicorn
+python-multipart
+
+# INSTALLAZIONI ULTERIORI PER IL COMPLETO FUNZIONAMENTO DELL'APP
+#hugging face
+# https://python.langchain.com/docs/integrations/platforms/huggingface
+huggingface_hub
+
+#for local pipeline
+transformers
+torch
+
+#embeddings
+#bug: doesn't work with python 3.12 (ok >=3.9 <=3.11)
+sentence-transformers
+
+# che ha un bug https://github.com/pyca/cryptography/issues/10300 nella versione 42.0.1
+cryptography==41.0.7
+
+#langchain-community==0.0.19
+langchain-community
+
+# speech recognition
+SpeechRecognition
+soundfile
+openai-whisper
+google-cloud-speech
+pydub

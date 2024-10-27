@@ -1,0 +1,30 @@
+FROM python:3.9-slim-bullseye
+
+# forces the stdout and stderr streams to be unbuffered
+ENV PYTHONUNBUFFERED True
+
+WORKDIR /cy-genai
+
+COPY ./libs /cy-genai/libs
+COPY ./certs /cy-genai/certs
+COPY ./cygenai-docker.json /cy-genai/cygenai.json
+COPY ./cygenai-requirements.txt /cy-genai/cygenai-requirements.txt
+#COPY ./<some vertex credentials> /cy-genai/<some vertex credentials>
+
+
+# Install system dependencies
+RUN apt-get update -y && apt-get install -y \
+    telnet curl ffmpeg \
+    && apt-get clean
+
+# Install requirements
+RUN pip install --no-cache-dir -r /cy-genai/cygenai-requirements.txt
+
+# Env variables
+ENV CYGENAI_CONFIG_PATH=cygenai.json
+#ENV OPENAI_API_KEY=<some open ai key>
+#ENV GOOGLE_APPLICATION_CREDENTIALS=/cy-genai/<some vertex credentials>
+
+
+# run listener
+ENTRYPOINT ["python", "./libs/cygenai/cygenai_api_server.py"]
