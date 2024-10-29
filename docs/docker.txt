@@ -10,14 +10,19 @@ docker image build -t cygenai-db -f ./Dockerfile-cygenai-db .
 docker run cygenai
 # run specifing name and image
 docker run --name cygenai cygenai
-docker run --name cygenai -v "c:\\cy-genai\\vol1":/cy-genai/cy-vo1 cygenai bash
+docker run --name cygenai -v "c:\\cy-genai\\vol1":/cy-genai/cy-vo1 cygenai
+docker run -d --name cygenai-db -v "c:\\Temp\\cy-genai\\vol2":/cy-genai-db/data -v "c:\\Temp\\cy-genai\\vol3":/cy-genai-db/logs -p 5432:5432 --network cygenai-test cygenai-db
+
 
 
 # run interactive mode
 docker run -it --name cygenai -v "c:\\Temp\\cy-genai\\vol1":/cy-genai/cy-vol1 cygenai bash
-docker run -it --name cygenai-test --network cygenai-net-test cygenai-test bash
+docker run -it --name cygenai-test --network cygenai-test cygenai-test bash
+docker run -it --name cygenai-db -v "c:\\Temp\\cy-genai\\vol2":/cy-genai-db/data -v "c:\\Temp\\cy-genai\\vol3":/cy-genai-db/logs -p 5432:5432 --network cygenai-test cygenai-db
 
 
+#atach running container
+docker exec -it cygenai-db /bin/bash
 
 
 docker run --name cygenai -v "c:\\Temp\\cy-genai\\vol1":/cy-genai/cy-vol1 cygenai --bind 127.0.0.1 -p 8000:8000
@@ -27,5 +32,9 @@ docker run --name cygenai -v "c:\\Temp\\cy-genai\\vol1":/cy-genai/cy-vol1 cygena
 docker rm cygenai
 
 # create a network
-docker network create --driver=bridge --subnet=172.28.0.0/16 --ip-range=172.28.5.0/24 --gateway=172.28.5.254 cygenai-net-test
-docker network rm cygenai-net-test
+docker network create --driver=bridge --subnet=172.28.1.0/28 --ip-range=172.28.1.0/28 --gateway=172.28.1.1 cygenai-test
+docker network inspect cygenai-test
+docker network list 
+docker network rm cygenai-test
+
+docker container list

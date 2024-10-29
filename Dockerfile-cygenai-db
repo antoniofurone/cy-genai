@@ -1,8 +1,12 @@
 FROM ramsrib/pgvector:16
 
+WORKDIR /cy-genai-db
+
 # Install system dependencies
 RUN apt-get update -y && apt-get install -y \
     iproute2 \
     && apt-get clean
 
+COPY ./init_pg_docker_db.sh /cy-genai-db
+ENTRYPOINT ["./init_pg_docker_db.sh"]
 
