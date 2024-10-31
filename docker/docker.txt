@@ -38,3 +38,7 @@ docker network list
 docker network rm cygenai-test
 
 docker container list
+
+# da inserire in pg_hba.conf
+# TYPE DATABASE USER CIDR-ADDRESS  METHOD
+host  all  all 0.0.0.0/0 scram-sha-256
