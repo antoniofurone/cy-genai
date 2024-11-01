@@ -41,3 +41,10 @@ docker network list
 docker network rm cygenai-test
 
 docker container list
+
+
+docker compose up -d
+docker compose stop
+docker compose rm
+
+kompose convert

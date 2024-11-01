@@ -1,0 +1,40 @@
+version: '2.27'
+
+services:
+  cygenai-db:
+    image: cygenai-db
+    ports:
+      - "5532:5432"
+    volumes:
+      - c:\\Temp\\cy-genai\\vol2:/cy-genai-db/data 
+      - c:\\Temp\\cy-genai\\vol3:/cy-genai-db/logs
+    networks:
+        cygenai-net:
+          ipv4_address: 172.28.2.2
+    deploy:
+      mode: replicated
+      replicas: 1
+
+  cygenai:
+    image: cygenai
+    ports:
+      - "8001:8000"
+    volumes:
+      - c:\\Temp\\cy-genai\\vol1:/cy-genai/data
+    networks:
+      - cygenai-net
+    deploy:
+      mode: replicated
+      replicas: 1 
+    restart: always
+    environment:
+      CYGENAI_CONFIG_PATH: "/cy-genai/data/cygenai.json"      
+
+networks:
+  cygenai-net:
+      driver: bridge
+      ipam:
+          driver: default
+          config:
+              - subnet: "172.28.2.0/28"
+                gateway: "172.28.2.1"
