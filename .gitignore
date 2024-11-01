@@ -13,7 +13,7 @@ libs/tests/splitaudio
 *__pycache__*
 gui/cy-genai-ui/.env
 
-Dockerfile-cygenai
+docker/start_with_keys*
 
 
 

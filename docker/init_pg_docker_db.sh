@@ -6,10 +6,13 @@ if [ -z "$( ls -A '/cy-genai-db/data' )" ]; then
     # place your script that you only want to run on first startup.
     chown postgres /cy-genai-db/data
     chown postgres /cy-genai-db/logs
-    su postgres -c "initdb /cy-genai-db/data"
+    su postgres -c "initdb --pgdata /cy-genai-db/data --auth=scram-sha-256 --pwfile=<(echo postgres)"
+    su postgres -c "sed -i -e 's|127.0.0.1/32|0.0.0.0/0|' /cy-genai-db/data/pg_hba.conf"
+    su postgres -c "sed -i -e 's|::1/128|::/0|' /cy-genai-db/data/pg_hba.conf"
+    
     su postgres -c "pg_ctl -D /cy-genai-db/data -l /cy-genai-db/logs/serverlog.log start"
     
-    export POSTGRES_PASSWORD=postgres
+    export PGPASSWORD=postgres
     psql -U postgres -c "CREATE EXTENSION vector"
     psql -U postgres -c "SELECT extversion FROM pg_extension WHERE extname = 'vector';"
 

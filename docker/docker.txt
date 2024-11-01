@@ -1,7 +1,7 @@
 # image build
 docker build .  
 
-docker image build -t cygenai -f ./Dockerfile-cygenai .
+docker image build -t cygenai -f ./Dockerfile-cygenai ../
 docker image build -t cygenai-test -f ./Dockerfile-cygenai-test .
 docker image build -t cygenai-db -f ./Dockerfile-cygenai-db .
 
@@ -9,16 +9,15 @@ docker image build -t cygenai-db -f ./Dockerfile-cygenai-db .
 # image run
 docker run cygenai
 # run specifing name and image
-docker run --name cygenai cygenai
-docker run --name cygenai -v "c:\\cy-genai\\vol1":/cy-genai/cy-vo1 cygenai
-docker run -d --name cygenai-db -v "c:\\Temp\\cy-genai\\vol2":/cy-genai-db/data -v "c:\\Temp\\cy-genai\\vol3":/cy-genai-db/logs -p 5432:5432 --network cygenai-test cygenai-db
+docker run -d --name cygenai-1 -v "c:\\Temp\\cy-genai\\vol1":/cy-genai/data cygenai -e CYGENAI_CONFIG_PATH=/cy-genai/data/cygenai.json --network cygenai-test -p 8001:8000
+docker run -d --name cygenai-db -v "c:\\Temp\\cy-genai\\vol2":/cy-genai-db/data -v "c:\\Temp\\cy-genai\\vol3":/cy-genai-db/logs -p 5532:5432 --network cygenai-test cygenai-db
 
 
 
 # run interactive mode
-docker run -it --name cygenai -v "c:\\Temp\\cy-genai\\vol1":/cy-genai/cy-vol1 cygenai bash
-docker run -it --name cygenai-test --network cygenai-test cygenai-test bash
-docker run -it --name cygenai-db -v "c:\\Temp\\cy-genai\\vol2":/cy-genai-db/data -v "c:\\Temp\\cy-genai\\vol3":/cy-genai-db/logs -p 5432:5432 --network cygenai-test cygenai-db
+docker run -it --name cygenai-1 -v "c:\\Temp\\cy-genai\\vol1":/cy-genai/data cygenai -e CYGENAI_CONFIG_PATH=/cy-genai/data/cygenai.json --network cygenai-test -p 8001:8000
+docker run -it --name cygenai-test -v "c:\\Temp\\cy-genai\\vol1":/cy-genai/data --network cygenai-test -e CYGENAI_CONFIG_PATH=/cy-genai/data/cygenai.json cygenai-test bash
+docker run -it --name cygenai-db -v "c:\\Temp\\cy-genai\\vol2":/cy-genai-db/data -v "c:\\Temp\\cy-genai\\vol3":/cy-genai-db/logs -p 5532:5432 --network cygenai-test cygenai-db
 
 
 #atach running container
@@ -38,7 +37,3 @@ docker network list
 docker network rm cygenai-test
 
 docker container list
-
-# da inserire in pg_hba.conf
-# TYPE DATABASE USER CIDR-ADDRESS  METHOD
-host  all  all 0.0.0.0/0 scram-sha-256
